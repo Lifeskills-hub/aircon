@@ -2,84 +2,110 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>SG Aircon Repair Help Board</title>
+  <title>SG Aircon Repair Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="icon" href="data:,">
+  <style>
+    #map { height: 600px; width: 100%; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    body { background: #f8f9fa; }
+    .header { background: linear-gradient(135deg, #007bff, #00c6ff); color: white; padding: 30px 0; }
+  </style>
+
+  <!-- Leaflet CSS + JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
-<body class="bg-light">
-<div class="container py-5">
-  <h1 class="mb-4 text-primary">SG Aircon Repair Help Board</h1>
+<body>
 
-  <div class="card mb-5 shadow">
-    <div class="card-body">
-      <h3>Post New Request</h3>
-      <form id="form" class="row g-3">
-        <div class="col-md-6"><input class="form-control" placeholder="Name" required></div>
-        <div class="col-md-6"><input class="form-control" placeholder="Phone" required></div>
-        <div class="col-12"><input class="form-control" placeholder="Email (optional)"></div>
-        <div class="col-12"><input class="form-control" placeholder="Location" required></div>
-        <div class="col-12"><textarea class="form-control" rows="3" placeholder="Problem" required></textarea></div>
-        <div class="col-6"><input class="form-control" type="number" placeholder="Budget SGD" required></div>
-        <div class="col-12"><button class="btn btn-success btn-lg">POST</button></div>
-      </form>
-    </div>
+<div class="header text-center">
+  <h1>SG Aircon Repair Help Map</h1>
+  <p>Click any marker to see job details • New jobs appear in real-time</p>
+</div>
+
+<div class="container my-4">
+  <div id="map"></div>
+  <div class="text-center mt-3">
+    <small class="text-muted">Total requests loaded: <span id="count">0</span></small>
   </div>
-
-  <h3>All Requests</h3>
-  <div id="list" class="row">Loading...</div>
 </div>
 
 <script>
-// YOUR ORIGINAL APPS SCRIPT URL (any working deployment)
+// YOUR APPS SCRIPT URL
 const RAW_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
 
-// THIS LINE FIXES CORS FOREVER
+// CORS-FREE URL (this fixes GitHub Pages forever)
 const API_URL = "https://corsproxy.io/?" + encodeURIComponent(RAW_URL);
 
-async function load() {
+// Initialize map centered on Singapore
+const map = L.map('map').setView([1.3521, 103.8198], 11);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+let markers = L.layerGroup().addTo(map);
+
+async function loadRequests() {
   try {
     const res = await fetch(API_URL + "?t=" + Date.now());
     const data = await res.json();
-    const list = document.getElementById("list");
-    list.innerHTML = "";
-    if (!data.length) { list.innerHTML = "<p>No requests yet.</p>"; return; }
+
+    markers.clearLayers(); // Clear old markers
+    let count = 0;
+
     data.forEach(r => {
-      list.innerHTML += `
-        <div class="col-md-6 mb-4">
-          <div class="card h-100">
-            <div class="card-body">
-              <h5 class="text-danger">${r.Description}</h5>
-              <p><strong>Location:</strong> ${r.Location}<br>
-                 <strong>Budget:</strong> S$${r.Budget}<br>
-                 <strong>Contact:</strong> ${r.Phone}</p>
-            </div>
-          </div>
-        </div>`;
+      if (r.Status !== "Open") return;
+
+      // Simple geocoding using Nominatim (free)
+      const location = encodeURIComponent(r.Location + ", Singapore");
+      const geoUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${location}&limit=1`;
+
+      fetch(geoUrl)
+        .then(res => res.json())
+        .then(json => {
+          if (json && json[0]) {
+            const lat = parseFloat(json[0].lat);
+            const lng = parseFloat(json[0].lon);
+
+            const marker = L.marker([lat, lng], {
+              icon: L.divIcon({
+                className: "custom-marker",
+                html: '<div style="background:#d63384;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.4);"></div>',
+                iconSize: [20, 20]
+              })
+            });
+
+            marker.bindPopup(`
+              <div style="min-width:200px">
+                <h6 style="margin:0;color:#d63384"><b>${r.Description}</b></h6>
+                <hr style="margin:8px 0">
+                <small>
+                  <b>Location:</b> ${r.Location}<br>
+                  <b>Budget:</b> S$${r.Budget}<br>
+                  <b>Contact:</b> ${r.Phone}<br>
+                  ${r.Email ? '<b>Email:</b> ' + r.Email + '<br>' : ''}
+                  <b>Posted:</b> ${new Date(r.Timestamp).toLocaleDateString()}
+                </small>
+              </div>
+            `);
+
+            markers.addLayer(marker);
+            count++;
+            document.getElementById("count").textContent = count;
+          }
+        });
     });
-  } catch(e) {
-    document.getElementById("list").innerHTML = "<p class='text-danger'>Error: " + e + "</p>";
+
+  } catch (e) {
+    console.error("Load error:", e);
   }
 }
 
-document.getElementById("form").onsubmit = async e => {
-  e.preventDefault();
-  const f = e.target;
-  await fetch(RAW_URL, {
-    method: "POST",
-    mode: "no-cors",
-    body: JSON.stringify({
-      action: "submitRequest",
-      name: f[0].value, phone: f[1].value, email: f[2].value,
-      location: f[3].value, description: f[4].value, budget: f[5].value
-    })
-  });
-  alert("Posted!");
-  f.reset();
-  load();
-};
-
-load();
-setInterval(load, 30000);
+// Load now + every 30 seconds
+loadRequests();
+setInterval(loadRequests, 30000);
 </script>
+
 </body>
 </html>
