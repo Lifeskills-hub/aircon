@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>SG Aircon Repair Map - MARKERS FIXED!</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { background: #f0f8ff; margin: 0; font-family: Arial; }
+    #map { height: 600px; width: 100%; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.3); margin: 25px 0; }
+    .header { background: linear-gradient(135deg, #007bff, #00c6ff); color: white; padding: 40px 0; text-align: center; }
+    .form-card { background: white; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); padding: 35px; }
+    .pulse { 
+      background: #ff0000; 
+      width: 32px; 
+      height: 32px; 
+      border-radius: 50%; 
+      border: 6px solid white; 
+      box-shadow: 0 0 0 0 rgba(255,0,0,1); 
+      animation: pulse 2s infinite; 
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.7); }
+      70% { box-shadow: 0 0 0 25px rgba(255,0,0,0); }
+      100% { box-shadow: 0 0 0 0 rgba(255,0,0,0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>SG Aircon Repair Map</h1>
+  <p>Post job → Red marker appears instantly</p>
+</div>
+
+<div class="container">
+  <div class="form-card">
+    <h3 class="text-primary">Post New Job</h3>
+    <form id="postForm" class="row g-3">
+      <div class="col-md-6"><input class="form-control" placeholder="Your Name" required></div>
+      <div class="col-md-6"><input class="form-control" placeholder="Phone" required></div>
+      <div class="col-12"><input class="form-control" placeholder="Email (optional)"></div>
+      <div class="col-12">
+        <select class="form-select" id="location" required>
+          <option value="">Choose Area</option>
+          <option>Jurong East</option><option>Tampines</option><option>Yishun</option><option>Bedok</option>
+          <option>Woodlands</option><option>Ang Mo Kio</option><option>Bukit Batok</option><option>Choa Chu Kang</option>
+          <option>Sengkang</option><option>Punggol</option><option>Hougang</option><option>Clementi</option>
+          <option>Bukit Panjang</option>
+        </select>
+      </div>
+      <div class="col-12"><textarea class="form-control" rows="3" placeholder="Problem" required></textarea></div>
+      <div class="col-md-6"><input class="form-control" type="number" placeholder="Budget SGD" required></div>
+      <div class="col-12 text-end"><button type="submit" class="btn btn-primary btn-lg">POST</button></div>
+    </form>
+  </div>
+
+  <div id="map"></div>
+  <div class="text-center"><h5 class="text-primary">Live Jobs: <span id="count">0</span></h5></div>
+</div>
+
+<script>
+// APPS SCRIPT URL
+const RAW_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
+const GET_URL = "https://corsproxy.io/?" + encodeURIComponent(RAW_URL + "?action=getRequests");
+
+// COORDS
+const COORDS = {
+  "jurong east": [1.3331, 103.7423],
+  "tampines": [1.3532, 103.9454],
+  "yishun": [1.4294, 103.8354],
+  "bedok": [1.3235, 103.9273],
+  "woodlands": [1.4369, 103.7865],
+  "ang mo kio": [1.3698, 103.8466],
+  "bukit batok": [1.3491, 103.7497],
+  "choa chu kang": [1.3852, 103.7445],
+  "sengkang": [1.3915, 103.8950],
+  "punggol": [1.4052, 103.9024],
+  "hougang": [1.3734, 103.8867],
+  "clementi": [1.3148, 103.7649],
+  "bukit panjang": [1.3786, 103.7623]
+};
+
+const map = L.map('map').setView([1.3521, 103.8198], 11);
+L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  attribution: '© Google'
+}).addTo(map);
+
+let markers = L.layerGroup().addTo(map);
+
+function cleanLocation(loc) {
+  if (loc) {
+    return loc.toLowerCase().replace(/\d+/g, '').trim();
+  }
+  return '';
+}
+
+async function load() {
+  try {
+    const res = await fetch(GET_URL + "&t=" + Date.now());
+    const data = await res.json();
+    markers.clearLayers();
+    let count = 0;
+
+    data.forEach(r => {
+      if (r.Status !== "Open") return;
+
+      // Mapping based on your current sheet structure
+      const name = r.Status || "Unknown";      // Status = Name
+      const phone = r.Name || "No phone";      // Name = Phone
+      const email = r.Phone || "";             // Phone = Email
+      const locationRaw = r.Email || "Unknown"; // Email = Location
+      const problem = r.Location || "No problem"; // Location = Problem
+      const budget = r.Description || "TBC";   // Description = Budget
+      const status = r.Budget || "Open";       // Budget = Status
+      const id = r.Id;                         // MUST come from your sheet!
+
+      const location = cleanLocation(locationRaw);
+      const coord = COORDS[location] || COORDS["jurong east"];
+
+      if (!coord || !id) return;
+
+      L.marker(coord, {
+        icon: L.divIcon({ className: "pulse", html: "", iconSize: [32, 32] })
+      }).bindPopup(`
+        <b style="color:red">${problem}</b><hr>
+        <b>Name:</b> ${name}<br>
+        <b>Phone:</b> ${phone}<br>
+        <b>Location:</b> ${locationRaw}<br>
+        <b>Budget:</b> S$${budget}<br>
+        <b>Email:</b> ${email}<br>
+        <small>Status: ${status}</small><br><br>
+        <button class="btn btn-success btn-sm accept-btn" data-id="${id}">
+          ✅ Accept Request
+        </button>
+      `).addTo(markers);
+
+      count++;
+    });
+
+    document.getElementById("count").textContent = count;
+  } catch (e) {
+    console.error("Load error:", e);
+  }
+}
+
+// Handle form submission
+document.getElementById("postForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const loc = f[3].value;
+  if (!COORDS[loc.toLowerCase()]) {
+    alert("Please pick a valid area!");
+    return;
+  }
+
+  // Send POST via CORS proxy
+  const postUrl = "https://corsproxy.io/?" + encodeURIComponent(RAW_URL);
+  try {
+    await fetch(postUrl, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "submitRequest",
+        name: f[0].value,
+        phone: f[1].value,
+        email: f[2].value,
+        location: loc,
+        description: f[4].value,
+        budget: f[5].value
+      })
+    });
+    alert("Posted! Marker appearing...");
+    f.reset();
+    load();
+  } catch (err) {
+    console.error("Post error:", err);
+    alert("⚠️ Failed to post. Check console.");
+  }
+};
+
+// Handle "Accept Request" clicks (event delegation)
+document.addEventListener("click", async (e) => {
+  if (e.target.classList.contains("accept-btn")) {
+    const id = e.target.dataset.id;
+    if (!id) return;
+
+    if (!confirm("Are you sure you want to accept this job?")) return;
+
+    const acceptUrl = "https://corsproxy.io/?" + encodeURIComponent(RAW_URL);
+    try {
+      const res = await fetch(acceptUrl, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "acceptRequest",
+          id: id
+        })
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        alert("✅ Job accepted! The marker will disappear shortly.");
+        e.target.disabled = true;
+        e.target.textContent = "Accepted!";
+        setTimeout(load, 1500); // Refresh after 1.5s
+      } else {
+        alert("❌ Failed: " + (result.error || "Job not found"));
+      }
+    } catch (err) {
+      console.error("Accept error:", err);
+      alert("⚠️ Failed to accept. Check connection or console.");
+    }
+  }
+});
+
+// Initial load + auto-refresh
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>
