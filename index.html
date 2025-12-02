@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>SG Aircon Repair Map - FIXED</title>
+  <title>SG Aircon Repair Map - MARKERS FIXED!</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -36,6 +36,7 @@
           <option>Jurong East</option><option>Tampines</option><option>Yishun</option><option>Bedok</option>
           <option>Woodlands</option><option>Ang Mo Kio</option><option>Bukit Batok</option><option>Choa Chu Kang</option>
           <option>Sengkang</option><option>Punggol</option><option>Hougang</option><option>Clementi</option>
+          <option>Bukit Panjang</option>
         </select>
       </div>
       <div class="col-12"><textarea class="form-control" rows="3" placeholder="Problem" required></textarea></div>
@@ -50,32 +51,40 @@
 
 <script>
 // APPS SCRIPT URL
-const RAW_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
+const RAW_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec?action=getRequests";
 const API_URL = "https://corsproxy.io/?" + encodeURIComponent(RAW_URL);
 
 // COORDS
 const COORDS = {
-  "Jurong East": [1.3331, 103.7423],
-  "Tampines": [1.3532, 103.9454],
-  "Yishun": [1.4294, 103.8354],
-  "Bedok": [1.3235, 103.9273],
-  "Woodlands": [1.4369, 103.7865],
-  "Ang Mo Kio": [1.3698, 103.8466],
-  "Bukit Batok": [1.3491, 103.7497],
-  "Choa Chu Kang": [1.3852, 103.7445],
-  "Sengkang": [1.3915, 103.8950],
-  "Punggol": [1.4052, 103.9024],
-  "Hougang": [1.3734, 103.8867],
-  "Clementi": [1.3148, 103.7649]
+  "jurong east": [1.3331, 103.7423],
+  "tampines": [1.3532, 103.9454],
+  "yishun": [1.4294, 103.8354],
+  "bedok": [1.3235, 103.9273],
+  "woodlands": [1.4369, 103.7865],
+  "ang mo kio": [1.3698, 103.8466],
+  "bukit batok": [1.3491, 103.7497],
+  "choa chu kang": [1.3852, 103.7445],
+  "sengkang": [1.3915, 103.8950],
+  "punggol": [1.4052, 103.9024],
+  "hougang": [1.3734, 103.8867],
+  "clementi": [1.3148, 103.7649],
+  "bukit panjang": [1.3786, 103.7623]
 };
 
 const map = L.map('map').setView([1.3521, 103.8198], 11);
 L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { attribution: '© Google' }).addTo(map);
 let markers = L.layerGroup().addTo(map);
 
+function cleanLocation(loc) {
+  if (loc) {
+    return loc.toLowerCase().replace(/\d+/g, '').trim();  // Remove numbers, lower case, trim
+  }
+  return '';
+}
+
 async function load() {
   try {
-    const res = await fetch(API_URL + "?t=" + Date.now());
+    const res = await fetch(API_URL + "&t=" + Date.now());
     const data = await res.json();
     markers.clearLayers();
     let count = 0;
@@ -84,15 +93,18 @@ async function load() {
       if (r.Status !== "Open") return;
 
       // FIXED MAPPING FOR YOUR SHEET
-      const name = r.Status;  // Status is name
-      const phone = r.Name;  // Name is phone
-      const email = r.Phone;  // Phone is email
-      const location = r.Email;  // Email is location
-      const problem = r.Location;  // Location is problem
-      const budget = r.Description;  // Description is budget
-      const status = r.Budget;  // Budget is status
+      const name = r.Status || "Unknown";  // Status is name
+      const phone = r.Name || "No phone";  // Name is phone
+      const email = r.Phone || "";  // Phone is email
+      const locationRaw = r.Email || r.Phone || "Unknown";  // Email is location
+      const problem = r.Location || "No problem";  // Location is problem
+      const budget = r.Description || "TBC";  // Description is budget
+      const status = r.Budget || "Open";  // Budget is status
 
-      const coord = COORDS[location];
+      const location = cleanLocation(locationRaw);
+
+      const coord = COORDS[location] || COORDS["jurong east"];  // Fallback to Jurong East if no match
+
       if (!coord) return;
 
       L.marker(coord, {
@@ -101,8 +113,10 @@ async function load() {
         <b style="color:red">${problem}</b><hr>
         <b>Name:</b> ${name}<br>
         <b>Phone:</b> ${phone}<br>
-        <b>Location:</b> ${location}<br>
-        <b>Budget:</b> S$${budget}
+        <b>Location:</b> ${locationRaw}<br>
+        <b>Budget:</b> S$${budget}<br>
+        <b>Email:</b> ${email}<br>
+        <small>Status: ${status}</small>
       `).addTo(markers);
 
       count++;
@@ -116,7 +130,7 @@ document.getElementById("postForm").onsubmit = async e => {
   e.preventDefault();
   const f = e.target;
   const loc = f[3].value;
-  if (!COORDS[loc]) { alert("Pick area!"); return; }
+  if (!COORDS[loc.toLowerCase()]) { alert("Pick area!"); return; }
 
   await fetch(RAW_URL, {method:"POST", mode:"no-cors", body:JSON.stringify({
     action:"submitRequest",
