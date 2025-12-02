@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SG Aircon Repair Help Board</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-5">
+  <h1 class="mb-4">Need Aircon Repair Help? Post Here</h1>
+
+  <!-- Post Request Form -->
+  <div class="card mb-5">
+    <div class="card-body">
+      <h3>Post a New Request</h3>
+      <form id="requestForm">
+        <div class="row g-3">
+          <div class="col-md-6"><input type="text" class="form-control" placeholder="Your Name" required></div>
+          <div class="col-md-6"><input type="tel" class="form-control" placeholder="Phone (for fixers to call)" required></div>
+          <div class="col-12"><input type="email" class="form-control" placeholder="Email (optional)"></div>
+          <div class="col-12"><input type="text" class="form-control" placeholder="Location (e.g. Jurong East)" required></div>
+          <div class="col-12"><textarea class="form-control" rows="3" placeholder="Describe the aircon problem" required></textarea></div>
+          <div class="col-md-6"><input type="number" class="form-control" placeholder="Max budget (SGD)" required></div>
+          <div class="col-12"><button type="submit" class="btn btn-primary">Post Request</button></div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- List of Requests -->
+  <h3>Open Requests</h3>
+  <div id="requestsList" class="row"></div>
+</div>
+
+<script>
+// REPLACE WITH YOUR ACTUAL WEB APP URL
+const API_URL = "https://script.google.com/macros/s/AKfycbx.../exec";
+
+async function loadRequests() {
+  const res = await fetch(API_URL + "?action=getRequests");
+  const requests = await res.json();
+  const container = document.getElementById("requestsList");
+  container.innerHTML = "";
+
+  requests.filter(r => r.Status === "Open").forEach(r => {
+    const card = document.createElement("div");
+    card.className = "col-md-6 mb-4";
+    card.innerHTML = `
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">${r.Description}</h5>
+          <p><strong>Location:</strong> ${r.Location}<br>
+             <strong>Budget:</strong> $${r.Budget}<br>
+             <strong>Contact:</strong> ${r.Phone} ${r.Email ? '/ '+r.Email : ''}<br>
+             <strong>Posted:</strong> ${new Date(r.Timestamp).toLocaleDateString()}</p>
+          <button class="btn btn-success" onclick='offerHelp("${r["Request ID"]}", "${r.Name}", "${r.Phone}")'>I Can Fix This</button>
+        </div>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+function offerHelp(requestId, posterName, posterPhone) {
+  const price = prompt("Your proposed price (SGD):");
+  if (!price) return;
+  const date = prompt("Which date can you go? (YYYY-MM-DD)");
+  const time = prompt("What time? (e.g. 2-5pm)");
+
+  const data = {
+    action: "submitOffer",
+    requestId,
+    fixerName: prompt("Your name:"),
+    fixerPhone: prompt("Your phone:"),
+    fixerEmail: prompt("Your email (optional):") || "",
+    price,
+    date,
+    time,
+    message: prompt("Message to customer (optional):") || ""
+  };
+
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(data),
+    headers: {"Content-Type": "text/plain"}
+  }).then(() => alert("Offer sent! Customer will contact you.")).catch(e => alert("Error: "+e));
+}
+
+document.getElementById("requestForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const data = {
+    action: "submitRequest",
+    name: form[0].value,
+    phone: form[1].value,
+    email: form[2].value,
+    location: form[3].value,
+    description: form[4].value,
+    budget: form[5].value,
+    photos: "" // you can add file upload later
+  };
+
+  await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(data),
+    headers: {"Content-Type": "text/plain"}
+  });
+  alert("Request posted!");
+  form.reset();
+  loadRequests();
+};
+
+// Load on start
+loadRequests();
+setInterval(loadRequests, 30000); // refresh every 30s
+</script>
+</body>
+</html>
