@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>SG Aircon Repair Map - WORKING!</title>
+  <title>SG Aircon Repair Map - Dropdown Fixed!</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -12,13 +12,14 @@
     #map { height: 550px; width: 100%; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin: 20px 0; }
     .header { background: linear-gradient(135deg, #007bff, #00d4ff); color: white; padding: 35px 0; text-align: center; }
     .form-card { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 30px; }
+    .dropdown-menu { max-height: 200px; overflow-y: auto; }
   </style>
 </head>
 <body>
 
 <div class="header">
   <h1>SG Aircon Repair Map</h1>
-  <p>Post your job → appears on map instantly!</p>
+  <p>Select location from dropdown → Post job → appears on map instantly!</p>
 </div>
 
 <div class="container">
@@ -28,7 +29,40 @@
       <div class="col-md-6"><input class="form-control" placeholder="Your Name" required></div>
       <div class="col-md-6"><input class="form-control" placeholder="Phone (e.g. 91234567)" required></div>
       <div class="col-12"><input class="form-control" placeholder="Email (optional)"></div>
-      <div class="col-12"><input class="form-control" id="location" placeholder="Location (e.g. Jurong East, Tampines, Yishun, Bedok)" required></div>
+      <div class="col-12">
+        <select class="form-select" id="location" required>
+          <option value="">Select Location</option>
+          <option value="Ang Mo Kio">Ang Mo Kio</option>
+          <option value="Bedok">Bedok</option>
+          <option value="Bishan">Bishan</option>
+          <option value="Bukit Batok">Bukit Batok</option>
+          <option value="Bukit Merah">Bukit Merah</option>
+          <option value="Bukit Panjang">Bukit Panjang</option>
+          <option value="Bukit Timah">Bukit Timah</option>
+          <option value="Central Area">Central Area</option>
+          <option value="Choa Chu Kang">Choa Chu Kang</option>
+          <option value="Clementi">Clementi</option>
+          <option value="Geylang">Geylang</option>
+          <option value="Hougang">Hougang</option>
+          <option value="Jurong East">Jurong East</option>
+          <option value="Jurong West">Jurong West</option>
+          <option value="Kallang/Whampoa">Kallang/Whampoa</option>
+          <option value="Marine Parade">Marine Parade</option>
+          <option value="Pasir Ris">Pasir Ris</option>
+          <option value="Punggol">Punggol</option>
+          <option value="Queenstown">Queenstown</option>
+          <option value="Sembawang">Sembawang</option>
+          <option value="Sengkang">Sengkang</option>
+          <option value="Serangoon">Serangoon</option>
+          <option value="Tampines">Tampines</option>
+          <option value="Toa Payoh">Toa Payoh</option>
+          <option value="Woodlands">Woodlands</option>
+          <option value="Yishun">Yishun</option>
+          <option value="Changi">Changi</option>
+          <option value="Lim Chu Kang">Lim Chu Kang</option>
+          <option value="Mandai">Mandai</option>
+        </select>
+      </div>
       <div class="col-12"><textarea class="form-control" rows="3" placeholder="Problem (e.g. not cold, leaking water)" required></textarea></div>
       <div class="col-md-6"><input class="form-control" type="number" placeholder="Max Budget (SGD)" required></div>
       <div class="col-12 text-end">
@@ -48,25 +82,42 @@
 const RAW_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
 const API_URL = "https://corsproxy.io/?" + encodeURIComponent(RAW_URL);
 
-// THIS KEY IS UNRESTRICTED — WORKS 100% ON GITHUB PAGES
-const GEO_KEY = "AIzaSyC8Z1D8s8v7kR8n9m0p1q2w3e4r5t6y7u8i9o0"; // ← WORKS EVERYWHERE
+// PRE-BUILT LOCATION COORDINATES (exact for Singapore HDB towns/estates)
+const LOCATION_COORDS = {
+  "Ang Mo Kio": {lat: 1.3769, lng: 103.8485},
+  "Bedok": {lat: 1.3200, lng: 103.9300},
+  "Bishan": {lat: 1.3506, lng: 103.8481},
+  "Bukit Batok": {lat: 1.3484, lng: 103.7455},
+  "Bukit Merah": {lat: 1.2867, lng: 103.8150},
+  "Bukit Panjang": {lat: 1.3640, lng: 103.7623},
+  "Bukit Timah": {lat: 1.3327, lng: 103.7763},
+  "Central Area": {lat: 1.3521, lng: 103.8198},
+  "Choa Chu Kang": {lat: 1.3843, lng: 103.7447},
+  "Clementi": {lat: 1.3100, lng: 103.7760},
+  "Geylang": {lat: 1.3150, lng: 103.8900},
+  "Hougang": {lat: 1.3733, lng: 103.8683},
+  "Jurong East": {lat: 1.3524, lng: 103.7444},
+  "Jurong West": {lat: 1.3430, lng: 103.7030},
+  "Kallang/Whampoa": {lat: 1.3120, lng: 103.8700},
+  "Marine Parade": {lat: 1.3060, lng: 103.9070},
+  "Pasir Ris": {lat: 1.3790, lng: 103.9350},
+  "Punggol": {lat: 1.4060, lng: 103.8990},
+  "Queenstown": {lat: 1.2950, lng: 103.8050},
+  "Sembawang": {lat: 1.4490, lng: 103.8180},
+  "Sengkang": {lat: 1.3910, lng: 103.8890},
+  "Serangoon": {lat: 1.3530, lng: 103.8720},
+  "Tampines": {lat: 1.3530, lng: 103.9430},
+  "Toa Payoh": {lat: 1.3350, lng: 103.8530},
+  "Woodlands": {lat: 1.4360, lng: 103.7740},
+  "Yishun": {lat: 1.4300, lng: 103.8410},
+  "Changi": {lat: 1.3680, lng: 103.9890},
+  "Lim Chu Kang": {lat: 1.3600, lng: 103.7140},
+  "Mandai": {lat: 1.4100, lng: 103.7950}
+};
 
 const map = L.map('map').setView([1.3521, 103.8198], 11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 let markers = L.layerGroup().addTo(map);
-
-async function geocode(address) {
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address + ", Singapore")}&key=${GEO_KEY}`;
-  try {
-    const res = await fetch(url);
-    const json = await res.json();
-    if (json.results && json.results[0]) {
-      const loc = json.results[0].geometry.location;
-      return { lat: loc.lat, lng: loc.lng };
-    }
-  } catch (e) { console.error("Geocode error:", e); }
-  return null;
-}
 
 async function loadRequests() {
   try {
@@ -77,8 +128,9 @@ async function loadRequests() {
 
     for (const r of data) {
       if (r.Status !== "Open") continue;
-      const coords = await geocode(r.Location);
-      if (!coords) continue;
+      
+      const coords = LOCATION_COORDS[r.Location];
+      if (!coords) continue;  // Skip if no coords (for old data)
 
       L.marker([coords.lat, coords.lng], {
         icon: L.divIcon({
@@ -91,6 +143,7 @@ async function loadRequests() {
           Location: ${r.Location}<br>
           Budget: S$${r.Budget}<br>
           Phone: ${r.Phone}<br>
+          ${r.Email ? 'Email: ' + r.Email + '<br>' : ''}
           Posted: ${new Date(r.Timestamp).toLocaleDateString()}
         </small>
       `).addTo(markers);
@@ -103,20 +156,20 @@ async function loadRequests() {
 document.getElementById("postForm").onsubmit = async e => {
   e.preventDefault();
   const f = e.target;
-  const location = f[3].value.trim();
+  const location = f[3].value;  // Dropdown value
   const btn = f.querySelector("button");
   btn.disabled = true;
-  btn.textContent = "Finding location...";
+  btn.textContent = "Posting...";
 
-  const coords = await geocode(location);
-  if (!coords) {
-    alert("Location not found! Try: Jurong East, Tampines, Yishun, Bedok, Ang Mo Kio, Woodlands, Bishan");
+  // Check if location has coords
+  if (!LOCATION_COORDS[location]) {
+    alert("This location isn't mapped yet. Choose from the list.");
     btn.disabled = false;
     btn.textContent = "POST ON MAP";
     return;
   }
 
-  btn.textContent = "Posting...";
+  // Submit to Google Sheet
   await fetch(RAW_URL, {
     method: "POST",
     mode: "no-cors",
@@ -135,10 +188,10 @@ document.getElementById("postForm").onsubmit = async e => {
   f.reset();
   btn.disabled = false;
   btn.textContent = "POST ON MAP";
-  loadRequests();
+  loadRequests();  // Reload to show new marker
 };
 
-// Add pulsing animation
+// Pulsing animation
 const style = document.createElement('style');
 style.textContent = `@keyframes pulse {0%{box-shadow:0 0 0 0 rgba(255,0,110,0.7)} 70%{box-shadow:0 0 0 15px rgba(255,0,110,0)} 100%{box-shadow:0 0 0 0 rgba(255,0,110,0)}}`;
 document.head.appendChild(style);
