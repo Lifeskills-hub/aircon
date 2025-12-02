@@ -2,78 +2,55 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>SG Aircon Repair Map - Dropdown Fixed!</title>
+  <title>SG Aircon Repair Map - FINAL & PERFECT</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     body { background: #f0f8ff; margin: 0; font-family: Arial; }
-    #map { height: 550px; width: 100%; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin: 20px 0; }
-    .header { background: linear-gradient(135deg, #007bff, #00d4ff); color: white; padding: 35px 0; text-align: center; }
-    .form-card { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 30px; }
-    .dropdown-menu { max-height: 200px; overflow-y: auto; }
+    #map { height: 580px; width: 100%; border-radius: 18px; box-shadow: 0 15px 40px rgba(0,0,0,0.25); margin: 25px 0; }
+    .header { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; padding: 40px 0; text-align: center; }
+    .form-card { background: white; border-radius: 18px; box-shadow: 0 15px 40px rgba(0,0,0,0.15); padding: 35px; margin-bottom: 20px; }
+    .marker-pulse { background:#ff0000; width:30px; height:30px; border-radius:50%; border:5px solid white; box-shadow:0 0 0 0 rgba(255,0,0,1); animation:pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow:0 0 0 0 rgba(255,0,0,0.7); } 70% { box-shadow:0 0 0 20px rgba(255,0,0,0); } 100% { box-shadow:0 0 0 0 rgba(255,0,0,0); } }
   </style>
 </head>
 <body>
 
 <div class="header">
   <h1>SG Aircon Repair Map</h1>
-  <p>Select location from dropdown → Post job → appears on map instantly!</p>
+  <p>Real-time jobs • Real Singapore map • Fixers click & call instantly!</p>
 </div>
 
 <div class="container">
   <div class="form-card">
-    <h3 class="text-primary mb-4">Post New Aircon Repair Request</h3>
+    <h3 class="text-success mb-4">Post New Aircon Repair Job</h3>
     <form id="postForm" class="row g-3">
       <div class="col-md-6"><input class="form-control" placeholder="Your Name" required></div>
       <div class="col-md-6"><input class="form-control" placeholder="Phone (e.g. 91234567)" required></div>
       <div class="col-12"><input class="form-control" placeholder="Email (optional)"></div>
       <div class="col-12">
-        <select class="form-select" id="location" required>
-          <option value="">Select Location</option>
-          <option value="Ang Mo Kio">Ang Mo Kio</option>
-          <option value="Bedok">Bedok</option>
-          <option value="Bishan">Bishan</option>
-          <option value="Bukit Batok">Bukit Batok</option>
-          <option value="Bukit Merah">Bukit Merah</option>
-          <option value="Bukit Panjang">Bukit Panjang</option>
-          <option value="Bukit Timah">Bukit Timah</option>
-          <option value="Central Area">Central Area</option>
-          <option value="Choa Chu Kang">Choa Chu Kang</option>
-          <option value="Clementi">Clementi</option>
-          <option value="Geylang">Geylang</option>
-          <option value="Hougang">Hougang</option>
-          <option value="Jurong East">Jurong East</option>
-          <option value="Jurong West">Jurong West</option>
-          <option value="Kallang/Whampoa">Kallang/Whampoa</option>
-          <option value="Marine Parade">Marine Parade</option>
-          <option value="Pasir Ris">Pasir Ris</option>
-          <option value="Punggol">Punggol</option>
-          <option value="Queenstown">Queenstown</option>
-          <option value="Sembawang">Sembawang</option>
-          <option value="Sengkang">Sengkang</option>
-          <option value="Serangoon">Serangoon</option>
-          <option value="Tampines">Tampines</option>
-          <option value="Toa Payoh">Toa Payoh</option>
-          <option value="Woodlands">Woodlands</option>
-          <option value="Yishun">Yishun</option>
-          <option value="Changi">Changi</option>
-          <option value="Lim Chu Kang">Lim Chu Kang</option>
-          <option value="Mandai">Mandai</option>
+        <select class="form-select form-select-lg" id="location" required>
+          <option value="">Choose Your Area</option>
+          <option>Ang Mo Kio</option><option>Bedok</option><option>Bishan</option><option>Bukit Batok</option>
+          <option>Bukit Merah</option><option>Bukit Panjang</option><option>Choa Chu Kang</option><option>Clementi</option>
+          <option>Hougang</option><option>Jurong East</option><option>Jurong West</option><option>Pasir Ris</option>
+          <option>Punggol</option><option>Sembawang</option><option>Sengkang</option><option>Tampines</option>
+          <option>Toa Payoh</option><option>Woodlands</option><option>Yishun</option>
         </select>
       </div>
-      <div class="col-12"><textarea class="form-control" rows="3" placeholder="Problem (e.g. not cold, leaking water)" required></textarea></div>
+      <div class="col-12"><textarea class="form-control" rows="3" placeholder="Problem (e.g. not cold, leaking, noisy)" required></textarea></div>
       <div class="col-md-6"><input class="form-control" type="number" placeholder="Max Budget (SGD)" required></div>
       <div class="col-12 text-end">
-        <button type="submit" class="btn btn-success btn-lg px-5">POST ON MAP</button>
+        <button type="submit" class="btn btn-danger btn-lg px-5">POST JOB ON MAP</button>
       </div>
     </form>
   </div>
 
   <div id="map"></div>
-  <div class="text-center mt-2">
-    <small class="text-muted">Live jobs: <span id="count">0</span></small>
+  <div class="text-center mt-3">
+    <h5>Live Jobs: <span id="count" class="text-danger">0</span></h5>
   </div>
 </div>
 
@@ -82,41 +59,23 @@
 const RAW_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
 const API_URL = "https://corsproxy.io/?" + encodeURIComponent(RAW_URL);
 
-// PRE-BUILT LOCATION COORDINATES (exact for Singapore HDB towns/estates)
-const LOCATION_COORDS = {
-  "Ang Mo Kio": {lat: 1.3769, lng: 103.8485},
-  "Bedok": {lat: 1.3200, lng: 103.9300},
-  "Bishan": {lat: 1.3506, lng: 103.8481},
-  "Bukit Batok": {lat: 1.3484, lng: 103.7455},
-  "Bukit Merah": {lat: 1.2867, lng: 103.8150},
-  "Bukit Panjang": {lat: 1.3640, lng: 103.7623},
-  "Bukit Timah": {lat: 1.3327, lng: 103.7763},
-  "Central Area": {lat: 1.3521, lng: 103.8198},
-  "Choa Chu Kang": {lat: 1.3843, lng: 103.7447},
-  "Clementi": {lat: 1.3100, lng: 103.7760},
-  "Geylang": {lat: 1.3150, lng: 103.8900},
-  "Hougang": {lat: 1.3733, lng: 103.8683},
-  "Jurong East": {lat: 1.3524, lng: 103.7444},
-  "Jurong West": {lat: 1.3430, lng: 103.7030},
-  "Kallang/Whampoa": {lat: 1.3120, lng: 103.8700},
-  "Marine Parade": {lat: 1.3060, lng: 103.9070},
-  "Pasir Ris": {lat: 1.3790, lng: 103.9350},
-  "Punggol": {lat: 1.4060, lng: 103.8990},
-  "Queenstown": {lat: 1.2950, lng: 103.8050},
-  "Sembawang": {lat: 1.4490, lng: 103.8180},
-  "Sengkang": {lat: 1.3910, lng: 103.8890},
-  "Serangoon": {lat: 1.3530, lng: 103.8720},
-  "Tampines": {lat: 1.3530, lng: 103.9430},
-  "Toa Payoh": {lat: 1.3350, lng: 103.8530},
-  "Woodlands": {lat: 1.4360, lng: 103.7740},
-  "Yishun": {lat: 1.4300, lng: 103.8410},
-  "Changi": {lat: 1.3680, lng: 103.9890},
-  "Lim Chu Kang": {lat: 1.3600, lng: 103.7140},
-  "Mandai": {lat: 1.4100, lng: 103.7950}
+// REAL SINGAPORE COORDINATES (HDB town centers)
+const COORDS = {
+  "Ang Mo Kio": [1.3698, 103.8466], "Bedok": [1.3235, 103.9273], "Bishan": [1.3511, 103.8481],
+  "Bukit Batok": [1.3491, 103.7497], "Bukit Merah": [1.2811, 103.8231], "Bukit Panjang": [1.3786, 103.7623],
+  "Choa Chu Kang": [1.3852, 103.7445], "Clementi": [1.3148, 103.7649], "Hougang": [1.3734, 103.8867],
+  "Jurong East": [1.3331, 103.7423], "Jurong West": [1.3396, 103.7074], "Pasir Ris": [1.3731, 103.9493],
+  "Punggol": [1.4052, 103.9024], "Sembawang": [1.4491, 103.8200], "Sengkang": [1.3915, 103.8950],
+  "Tampines": [1.3532, 103.9454], "Toa Payoh": [1.3354, 103.8565], "Woodlands": [1.4369, 103.7865],
+  "Yishun": [1.4294, 103.8354]
 };
 
+// BETTER MAP TILES (Google Maps style)
 const map = L.map('map').setView([1.3521, 103.8198], 11);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  attribution: '© Google Maps'
+}).addTo(map);
+
 let markers = L.layerGroup().addTo(map);
 
 async function loadRequests() {
@@ -126,29 +85,40 @@ async function loadRequests() {
     markers.clearLayers();
     let count = 0;
 
-    for (const r of data) {
-      if (r.Status !== "Open") continue;
-      
-      const coords = LOCATION_COORDS[r.Location];
-      if (!coords) continue;  // Skip if no coords (for old data)
+    data.forEach(r => {
+      if (r.Status !== "Open") return;
 
-      L.marker([coords.lat, coords.lng], {
-        icon: L.divIcon({
-          html: '<div style="background:#ff006e;width:28px;height:28px;border-radius:50%;border:5px solid white;box-shadow:0 4px 20px rgba(255,0,110,0.7);animation:pulse 2s infinite;"></div>',
-          iconSize: [28, 28]
-        })
-      }).bindPopup(`
-        <b style="color:#d63384">${r.Description}</b><hr>
-        <small>
-          Location: ${r.Location}<br>
-          Budget: S$${r.Budget}<br>
-          Phone: ${r.Phone}<br>
-          ${r.Email ? 'Email: ' + r.Email + '<br>' : ''}
-          Posted: ${new Date(r.Timestamp).toLocaleDateString()}
-        </small>
-      `).addTo(markers);
+      // FIX YOUR SHEET'S MIXED-UP COLUMNS
+      const name = r.Name || r["Status"] || "Unknown";
+      const phone = r.Phone || r["Name"] || "No phone";
+      const location = r.Location || r["Email"] || "Unknown";
+      const problem = r.Description || r["Location"] || "No problem";
+      const budget = r.Budget || r["Problem"] || "TBC";
+      const status = r.Status || "Open";
+
+      const coord = COORDS[location];
+      if (!coord) return;
+
+      const marker = L.marker(coord, {
+        icon: L.divIcon({ className: "marker-pulse", html: "", iconSize: [30, 30] })
+      });
+
+      marker.bindPopup(`
+        <div style="font-size:14px">
+          <h6 style="color:#d63384; margin:0"><b>${problem}</b></h6>
+          <hr style="margin:6px 0">
+          <b>Name:</b> ${name}<br>
+          <b>Phone:</b> <a href="tel:${phone}">${phone}</a><br>
+          <b>Location:</b> ${location}<br>
+          <b>Budget:</b> S$${budget}<br>
+          <small>Posted: ${new Date(r.Timestamp).toLocaleDateString()}</small>
+        </div>
+      `);
+
+      markers.addLayer(marker);
       count++;
-    }
+    });
+
     document.getElementById("count").textContent = count;
   } catch (e) { console.error(e); }
 }
@@ -156,23 +126,18 @@ async function loadRequests() {
 document.getElementById("postForm").onsubmit = async e => {
   e.preventDefault();
   const f = e.target;
-  const location = f[3].value;  // Dropdown value
+  const location = f[3].value;
   const btn = f.querySelector("button");
   btn.disabled = true;
   btn.textContent = "Posting...";
 
-  // Check if location has coords
-  if (!LOCATION_COORDS[location]) {
-    alert("This location isn't mapped yet. Choose from the list.");
-    btn.disabled = false;
-    btn.textContent = "POST ON MAP";
-    return;
+  if (!COORDS[location]) {
+    alert("Please select a valid location from the list!");
+    btn.disabled = false; btn.textContent = "POST JOB ON MAP"; return;
   }
 
-  // Submit to Google Sheet
   await fetch(RAW_URL, {
-    method: "POST",
-    mode: "no-cors",
+    method: "POST", mode: "no-cors",
     body: JSON.stringify({
       action: "submitRequest",
       name: f[0].value,
@@ -184,19 +149,14 @@ document.getElementById("postForm").onsubmit = async e => {
     })
   });
 
-  alert("SUCCESS! Your job is now LIVE on the map!");
+  alert("SUCCESS! Your job is LIVE on the map!");
   f.reset();
   btn.disabled = false;
-  btn.textContent = "POST ON MAP";
-  loadRequests();  // Reload to show new marker
+  btn.textContent = "POST JOB ON MAP";
+  loadRequests();
 };
 
-// Pulsing animation
-const style = document.createElement('style');
-style.textContent = `@keyframes pulse {0%{box-shadow:0 0 0 0 rgba(255,0,110,0.7)} 70%{box-shadow:0 0 0 15px rgba(255,0,110,0)} 100%{box-shadow:0 0 0 0 rgba(255,0,110,0)}}`;
-document.head.appendChild(style);
-
-// Load everything
+// Load now + refresh every 30s
 loadRequests();
 setInterval(loadRequests, 30000);
 </script>
