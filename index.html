@@ -58,7 +58,7 @@ async function load() {
                <strong>Budget:</strong> S$${r.Budget}<br>
                <strong>Contact:</strong> ${r.Phone} ${r.Email ? "/ " + r.Email : ""}<br>
                <strong>Posted:</strong> ${new Date(r.Timestamp).toLocaleDateString()}</p>
-            <button class="btn btn-success btn-sm" onclick="alert('Call ${r.Phone}\\nRequest ID: ${r['Request ID']}')">
+<button class="btn btn-success btn-sm" onclick="alert('Call ${r.Phone}\\nRequest ID: ' + r["Request ID"])">
               I Can Fix This
             </button>
           </div>
