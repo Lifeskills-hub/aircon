@@ -54,22 +54,21 @@
 </div>
 
 <script>
-// Base URL (NO query string)
+// ✅ Base URL of your Google Apps Script web app (no query params)
 const BASE_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
 
-// Helper: Build CORS-safe URL
-function buildProxyUrl(paramsObj) {
+// ✅ Build CORS-safe proxy URL
+function buildProxyUrl(params) {
   const url = new URL(BASE_URL);
-  for (const [key, value] of Object.entries(paramsObj)) {
+  for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.append(key, value);
+      url.searchParams.set(key, value.toString());
     }
   }
-  const fullUrl = url.toString();
-  return "https://corsproxy.io/?" + encodeURIComponent(fullUrl);
+  return "https://corsproxy.io/?" + encodeURIComponent(url.toString());
 }
 
-// Coordinates mapping
+// Coordinates for predefined areas
 const COORDS = {
   "jurong east": [1.3331, 103.7423],
   "tampines": [1.3532, 103.9454],
@@ -86,16 +85,25 @@ const COORDS = {
   "bukit panjang": [1.3786, 103.7623]
 };
 
+// Initialize map
 const map = L.map('map').setView([1.3521, 103.8198], 11);
 L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { attribution: '© Google' }).addTo(map);
 let markers = L.layerGroup().addTo(map);
 
-// Load markers
+// Load job markers
 async function load() {
   try {
     const url = buildProxyUrl({ action: "getRequests" });
     const res = await fetch(url);
+    if (!res.ok) throw new Error("Network response not OK");
     const data = await res.json();
+    
+    if (!Array.isArray(data)) {
+      console.error("Unexpected response:", data);
+      document.getElementById("count").textContent = "Err";
+      return;
+    }
+
     markers.clearLayers();
     let count = 0;
 
@@ -122,14 +130,13 @@ async function load() {
       L.marker(coord, {
         icon: L.divIcon({ className: "pulse", html: "", iconSize: [32, 32] })
       }).bindPopup(popupContent).addTo(markers);
-
       count++;
     });
 
     document.getElementById("count").textContent = count;
-  } catch(e) {
-    console.error("Load failed:", e);
-    document.getElementById("count").textContent = "Error";
+  } catch (e) {
+    console.error("Load error:", e);
+    document.getElementById("count").textContent = "Err";
   }
 }
 
@@ -162,7 +169,7 @@ function closeModal() {
   if (el) el.remove();
 }
 
-// Submit accept via GET + corsproxy
+// Submit accept offer
 async function submitAccept(requestId) {
   const data = {
     action: "acceptRequest",
@@ -184,21 +191,23 @@ async function submitAccept(requestId) {
   try {
     const url = buildProxyUrl(data);
     const res = await fetch(url);
+    if (!res.ok) throw new Error("Network error");
     const result = await res.json();
+
     closeModal();
     if (result.success) {
       alert("✅ Offer submitted successfully!");
-      load(); // refresh map
+      load();
     } else {
-      alert("❌ " + (result.error || "Failed to submit"));
+      alert("❌ " + (result.error || "Unknown error"));
     }
   } catch (err) {
     console.error(err);
-    alert("Network error. Check console.");
+    alert("Failed to submit. Check console.");
   }
 }
 
-// Post new job
+// Handle job posting
 document.getElementById("postForm").onsubmit = async function(e) {
   e.preventDefault();
   const f = e.target;
@@ -220,21 +229,23 @@ document.getElementById("postForm").onsubmit = async function(e) {
   try {
     const url = buildProxyUrl(data);
     const res = await fetch(url);
+    if (!res.ok) throw new Error("Network error");
     const result = await res.json();
+
     if (result.success) {
       alert("✅ Job posted! Marker appearing soon.");
       f.reset();
       load();
     } else {
-      alert("❌ " + (result.error || "Failed to post"));
+      alert("❌ " + (result.error || "Failed to post job"));
     }
   } catch (err) {
     console.error(err);
-    alert("Failed to post job. Check console.");
+    alert("Failed to post. Check console.");
   }
 };
 
-// Initial load
+// Start
 load();
 setInterval(load, 30000);
 </script>
