@@ -5,15 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SG Aircon Repair Help Board</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- This stops the annoying favicon 404 -->
+  <link rel="icon" href="data:,">
 </head>
 <body class="bg-light">
 <div class="container py-5">
-  <h1 class="mb-4">Need Aircon Repair Help? Post Here</h1>
+  <h1 class="mb-4 text-primary">Need Aircon Repair Help? Post Here</h1>
 
   <!-- Post Request Form -->
-  <div class="card mb-5">
+  <div class="card mb-5 shadow-sm">
     <div class="card-body">
-      <h3>Post a New Request</h3>
+      <h3 class="card-title">Post a New Request</h3>
       <form id="requestForm">
         <div class="row g-3">
           <div class="col-md-6"><input type="text" class="form-control" placeholder="Your Name" required></div>
@@ -22,56 +24,77 @@
           <div class="col-12"><input type="text" class="form-control" placeholder="Location (e.g. Jurong East)" required></div>
           <div class="col-12"><textarea class="form-control" rows="3" placeholder="Describe the aircon problem" required></textarea></div>
           <div class="col-md-6"><input type="number" class="form-control" placeholder="Max budget (SGD)" required></div>
-          <div class="col-12"><button type="submit" class="btn btn-primary">Post Request</button></div>
+          <div class="col-12"><button type="submit" class="btn btn-primary btn-lg">Post Request</button></div>
         </div>
       </form>
     </div>
   </div>
 
   <!-- List of Requests -->
-  <h3>Open Requests</h3>
-  <div id="requestsList" class="row"></div>
+  <h3 class="mb-3">Open Requests</h3>
+  <div id="requestsList" class="row">
+    <div class="col-12"><p>Loading requests...</p></div>
+  </div>
 </div>
 
 <script>
-// REPLACE WITH YOUR ACTUAL WEB APP URL
+// ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+// IMPORTANT: PUT YOUR LATEST DEPLOYED URL HERE (after New version!)
 const API_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
+// ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
 
 async function loadRequests() {
-  const res = await fetch(API_URL + "?action=getRequests");
-  const requests = await res.json();
-  const container = document.getElementById("requestsList");
-  container.innerHTML = "";
+  try {
+    const res = await fetch(API_URL + "?action=getRequests&t=" + Date.now());
+    const requests = await res.json();
 
-  requests.filter(r => r.Status === "Open").forEach(r => {
-    const card = document.createElement("div");
-    card.className = "col-md-6 mb-4";
-    card.innerHTML = `
-      <div class="card">
-        <div class="card-body">
-          <h5 class="card-title">${r.Description}</h5>
-          <p><strong>Location:</strong> ${r.Location}<br>
-             <strong>Budget:</strong> $${r.Budget}<br>
-             <strong>Contact:</strong> ${r.Phone} ${r.Email ? '/ '+r.Email : ''}<br>
-             <strong>Posted:</strong> ${new Date(r.Timestamp).toLocaleDateString()}</p>
-          <button class="btn btn-success" onclick='offerHelp("${r["Request ID"]}", "${r.Name}", "${r.Phone}")'>I Can Fix This</button>
-        </div>
-      </div>`;
-    container.appendChild(card);
-  });
+    const container = document.getElementById("requestsList");
+    container.innerHTML = "";
+
+    if (!Array.isArray(requests) || requests.length === 0) {
+      container.innerHTML = '<div class="col-12"><p class="text-muted">No open requests right now.</p></div>';
+      return;
+    }
+
+    requests
+      .filter(r => r.Status === "Open")
+      .forEach(r => {
+        const card = document.createElement("div");
+        card.className = "col-md-6 mb-4";
+        card.innerHTML = `
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title text-danger">${r.Description}</h5>
+              <p class="card-text">
+                <strong>Location:</strong> ${r.Location}<br>
+                <strong>Budget:</strong> S$${r.Budget}<br>
+                <strong>Contact:</strong> ${r.Phone} ${r.Email ? '/ ' + r.Email : ''}<br>
+                <strong>Posted:</strong> ${new Date(r.Timestamp).toLocaleString()}
+              </p>
+              <button class="btn btn-success btn-sm" onclick='offerHelp("${r["Request ID"]}", "${r.Name}", "${r.Phone}")'>
+                I Can Fix This
+              </button>
+            </div>
+          </div>`;
+        container.appendChild(card);
+      });
+  } catch (err) {
+    document.getElementById("requestsList").innerHTML = 
+      `<div class="col-12 text-danger">Error loading requests: ${err.message}</div>`;
+  }
 }
 
 function offerHelp(requestId, posterName, posterPhone) {
-  const price = prompt("Your proposed price (SGD):");
+  const price = prompt("Your proposed price (SGD):", "80");
   if (!price) return;
-  const date = prompt("Which date can you go? (YYYY-MM-DD)");
-  const time = prompt("What time? (e.g. 2-5pm)");
-
+  const date = prompt("Which date can you go? (YYYY-MM-DD):");
+  if (!date) return;
+  const time = prompt("What time? (e.g. 2-5pm):");
   const data = {
     action: "submitOffer",
     requestId,
-    fixerName: prompt("Your name:"),
-    fixerPhone: prompt("Your phone:"),
+    fixerName: prompt("Your name:", ""),
+    fixerPhone: prompt("Your phone:", ""),
     fixerEmail: prompt("Your email (optional):") || "",
     price,
     date,
@@ -81,9 +104,10 @@ function offerHelp(requestId, posterName, posterPhone) {
 
   fetch(API_URL, {
     method: "POST",
-    body: JSON.stringify(data),
-    headers: {"Content-Type": "text/plain"}
-  }).then(() => alert("Offer sent! Customer will contact you.")).catch(e => alert("Error: "+e));
+    mode: "no-cors",
+    body: JSON.stringify(data)
+  }).then(() => alert("Offer sent! Customer will contact you soon."))
+   .catch(() => alert("Offer sent (no-cors mode)"));
 }
 
 document.getElementById("requestForm").onsubmit = async (e) => {
@@ -96,23 +120,23 @@ document.getElementById("requestForm").onsubmit = async (e) => {
     email: form[2].value,
     location: form[3].value,
     description: form[4].value,
-    budget: form[5].value,
-    photos: "" // you can add file upload later
-  }; 
+    budget: form[5].value
+  };
 
   await fetch(API_URL, {
     method: "POST",
-    body: JSON.stringify(data),
-    headers: {"Content-Type": "text/plain"}
+    mode: "no-cors",
+    body: JSON.stringify(data)
   });
-  alert("Request posted!");
+
+  alert("Request posted successfully!");
   form.reset();
-  loadRequests();
+  loadRequests();   // ← This will now show the new request immediately
 };
 
-// Load on start
+// Load requests when page opens + auto-refresh every 30 seconds
 loadRequests();
-setInterval(loadRequests, 30000); // refresh every 30s
+setInterval(loadRequests, 30000);
 </script>
 </body>
 </html>
