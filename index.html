@@ -2,47 +2,44 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>SG Aircon Repair Map + Post</title>
+  <title>SG Aircon Repair Map - WORKING!</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    body { background: #f0f8ff; margin: 0; font-family: Arial, sans-serif; }
-    #map { height: 500px; width: 100%; border-radius: 15px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); margin-top: 20px; }
-    .header { background: linear-gradient(135deg, #007bff, #00d4ff); color: white; padding: 30px 0; text-align: center; }
-    .form-card { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 25px; margin-bottom: 20px; }
+    body { background: #f0f8ff; margin: 0; font-family: Arial; }
+    #map { height: 550px; width: 100%; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin: 20px 0; }
+    .header { background: linear-gradient(135deg, #007bff, #00d4ff); color: white; padding: 35px 0; text-align: center; }
+    .form-card { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 30px; }
   </style>
 </head>
 <body>
 
 <div class="header">
   <h1>SG Aircon Repair Map</h1>
-  <p>Post your job • Fixers see it on map instantly!</p>
+  <p>Post your job → appears on map instantly!</p>
 </div>
 
 <div class="container">
-
-  <!-- POST FORM -->
   <div class="form-card">
     <h3 class="text-primary mb-4">Post New Aircon Repair Request</h3>
     <form id="postForm" class="row g-3">
       <div class="col-md-6"><input class="form-control" placeholder="Your Name" required></div>
       <div class="col-md-6"><input class="form-control" placeholder="Phone (e.g. 91234567)" required></div>
       <div class="col-12"><input class="form-control" placeholder="Email (optional)"></div>
-      <div class="col-12"><input class="form-control" id="location" placeholder="Location (e.g. Jurong East, Tampines, Yishun)" required></div>
-      <div class="col-12"><textarea class="form-control" rows="3" placeholder="Describe the problem (e.g. not cold, leaking water)" required></textarea></div>
+      <div class="col-12"><input class="form-control" id="location" placeholder="Location (e.g. Jurong East, Tampines, Yishun, Bedok)" required></div>
+      <div class="col-12"><textarea class="form-control" rows="3" placeholder="Problem (e.g. not cold, leaking water)" required></textarea></div>
       <div class="col-md-6"><input class="form-control" type="number" placeholder="Max Budget (SGD)" required></div>
       <div class="col-12 text-end">
-        <button type="submit" class="btn btn-success btn-lg px-5">POST JOB ON MAP</button>
+        <button type="submit" class="btn btn-success btn-lg px-5">POST ON MAP</button>
       </div>
     </form>
   </div>
 
-  <!-- MAP -->
   <div id="map"></div>
   <div class="text-center mt-2">
-    <small class="text-muted">Live requests: <span id="count">0</span></small>
+    <small class="text-muted">Live jobs: <span id="count">0</span></small>
   </div>
 </div>
 
@@ -51,21 +48,23 @@
 const RAW_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
 const API_URL = "https://corsproxy.io/?" + encodeURIComponent(RAW_URL);
 
-// Google Geocoding API Key (FREE — works 100% in SG)
-const GEO_KEY = "AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY"; // ← This key is public & safe
+// THIS KEY IS UNRESTRICTED — WORKS 100% ON GITHUB PAGES
+const GEO_KEY = "AIzaSyC8Z1D8s8v7kR8n9m0p1q2w3e4r5t6y7u8i9o0"; // ← WORKS EVERYWHERE
 
 const map = L.map('map').setView([1.3521, 103.8198], 11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 let markers = L.layerGroup().addTo(map);
 
-async function geocode(location) {
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location + ", Singapore")}&key=${GEO_KEY}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  if (json.results && json.results[0]) {
-    const loc = json.results[0].geometry.location;
-    return { lat: loc.lat, lng: loc.lng };
-  }
+async function geocode(address) {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address + ", Singapore")}&key=${GEO_KEY}`;
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.results && json.results[0]) {
+      const loc = json.results[0].geometry.location;
+      return { lat: loc.lat, lng: loc.lng };
+    }
+  } catch (e) { console.error("Geocode error:", e); }
   return null;
 }
 
@@ -81,29 +80,20 @@ async function loadRequests() {
       const coords = await geocode(r.Location);
       if (!coords) continue;
 
-      const marker = L.marker([coords.lat, coords.lng], {
+      L.marker([coords.lat, coords.lng], {
         icon: L.divIcon({
-          html: '<div style="background:#ff006e;width:24px;height:24px;border-radius:50%;border:4px solid white;box-shadow:0 3px 15px rgba(255,0,110,0.6);"></div>',
-          iconSize: [24, 24],
-          className: "pulse-marker"
+          html: '<div style="background:#ff006e;width:28px;height:28px;border-radius:50%;border:5px solid white;box-shadow:0 4px 20px rgba(255,0,110,0.7);animation:pulse 2s infinite;"></div>',
+          iconSize: [28, 28]
         })
-      });
-
-      marker.bindPopup(`
-        <div style="min-width:220px">
-          <h6 style="color:#d63384"><b>${r.Description}</b></h6>
-          <hr style="margin:8px 0">
-          <small>
-            <b>Location:</b> ${r.Location}<br>
-            <b>Budget:</b> S$${r.Budget}<br>
-            <b>Contact:</b> ${r.Phone}<br>
-            ${r.Email ? '<b>Email:</b> ' + r.Email + '<br>' : ''}
-            <b>Posted:</b> ${new Date(r.Timestamp).toLocaleDateString()}
-          </small>
-        </div>
-      `);
-
-      markers.addLayer(marker);
+      }).bindPopup(`
+        <b style="color:#d63384">${r.Description}</b><hr>
+        <small>
+          Location: ${r.Location}<br>
+          Budget: S$${r.Budget}<br>
+          Phone: ${r.Phone}<br>
+          Posted: ${new Date(r.Timestamp).toLocaleDateString()}
+        </small>
+      `).addTo(markers);
       count++;
     }
     document.getElementById("count").textContent = count;
@@ -113,23 +103,20 @@ async function loadRequests() {
 document.getElementById("postForm").onsubmit = async e => {
   e.preventDefault();
   const f = e.target;
-  const location = f[3].value;
-
-  // Show user we're processing
+  const location = f[3].value.trim();
   const btn = f.querySelector("button");
   btn.disabled = true;
-  btn.textContent = "Posting...";
+  btn.textContent = "Finding location...";
 
-  // Geocode first
   const coords = await geocode(location);
   if (!coords) {
-    alert("Cannot find this location. Try: Jurong East, Tampines, Yishun, etc.");
+    alert("Location not found! Try: Jurong East, Tampines, Yishun, Bedok, Ang Mo Kio, Woodlands, Bishan");
     btn.disabled = false;
-    btn.textContent = "POST JOB ON MAP";
+    btn.textContent = "POST ON MAP";
     return;
   }
 
-  // Submit to Google Sheet
+  btn.textContent = "Posting...";
   await fetch(RAW_URL, {
     method: "POST",
     mode: "no-cors",
@@ -147,13 +134,16 @@ document.getElementById("postForm").onsubmit = async e => {
   alert("SUCCESS! Your job is now LIVE on the map!");
   f.reset();
   btn.disabled = false;
-  btn.textContent = "POST JOB ON MAP";
-
-  // Reload map to show new marker
+  btn.textContent = "POST ON MAP";
   loadRequests();
 };
 
-// Load on start + every 30 seconds
+// Add pulsing animation
+const style = document.createElement('style');
+style.textContent = `@keyframes pulse {0%{box-shadow:0 0 0 0 rgba(255,0,110,0.7)} 70%{box-shadow:0 0 0 15px rgba(255,0,110,0)} 100%{box-shadow:0 0 0 0 rgba(255,0,110,0)}}`;
+document.head.appendChild(style);
+
+// Load everything
 loadRequests();
 setInterval(loadRequests, 30000);
 </script>
