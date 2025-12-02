@@ -91,3 +91,152 @@ L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { attribution:
 let markers = L.layerGroup().addTo(map);
 
 // Load markers
+async function load() {
+  try {
+    const url = buildProxyUrl({ action: "getRequests" });
+    const res = await fetch(url);
+    const data = await res.json();
+    markers.clearLayers();
+    let count = 0;
+
+    data.forEach(r => {
+      if (r.Status !== "Open") return;
+
+      const loc = (r.Location || "").toLowerCase().trim();
+      const coord = COORDS[loc] || COORDS["jurong east"];
+      if (!coord) return;
+
+      const popupContent = `
+        <b style="color:red">${r.Description}</b><hr>
+        <b>Name:</b> ${r.Name || '—'}<br>
+        <b>Phone:</b> ${r.Phone || '—'}<br>
+        <b>Location:</b> ${r.Location || '—'}<br>
+        <b>Budget:</b> S$${r.Budget || 'TBC'}<br>
+        <b>Email:</b> ${r.Email || '—'}<br>
+        <small>Status: ${r.Status}</small><br><br>
+        <button class="btn btn-success btn-sm" onclick="showAcceptForm('${r.Id}')">
+          ✅ Accept Request
+        </button>
+      `;
+
+      L.marker(coord, {
+        icon: L.divIcon({ className: "pulse", html: "", iconSize: [32, 32] })
+      }).bindPopup(popupContent).addTo(markers);
+
+      count++;
+    });
+
+    document.getElementById("count").textContent = count;
+  } catch(e) {
+    console.error("Load failed:", e);
+    document.getElementById("count").textContent = "Error";
+  }
+}
+
+// Accept form UI
+function showAcceptForm(requestId) {
+  const html = `
+    <div id="acceptModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;">
+      <div style="background:white;padding:25px;border-radius:15px;width:90%;max-width:500px;">
+        <h5>Accept This Request</h5>
+        <p><small>Request ID: ${requestId}</small></p>
+        <input class="form-control mb-2" id="fixerName" placeholder="Your Name" required>
+        <input class="form-control mb-2" id="fixerPhone" placeholder="Your Phone" required>
+        <input class="form-control mb-2" id="fixerEmail" placeholder="Your Email (optional)">
+        <input class="form-control mb-2" id="proposedPrice" placeholder="Proposed Price (SGD)" type="number">
+        <input class="form-control mb-2" id="availableDate" placeholder="Available Date" type="date">
+        <input class="form-control mb-2" id="availableTime" placeholder="Available Time" type="time">
+        <textarea class="form-control mb-3" id="message" placeholder="Message (optional)" rows="2"></textarea>
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-success" onclick="submitAccept('${requestId}')">Submit Offer</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeModal() {
+  const el = document.getElementById("acceptModal");
+  if (el) el.remove();
+}
+
+// Submit accept via GET + corsproxy
+async function submitAccept(requestId) {
+  const data = {
+    action: "acceptRequest",
+    id: requestId,
+    fixerName: document.getElementById("fixerName").value,
+    fixerPhone: document.getElementById("fixerPhone").value,
+    fixerEmail: document.getElementById("fixerEmail").value,
+    proposedPrice: document.getElementById("proposedPrice").value,
+    availableDate: document.getElementById("availableDate").value,
+    availableTime: document.getElementById("availableTime").value,
+    message: document.getElementById("message").value
+  };
+
+  if (!data.fixerName || !data.fixerPhone) {
+    alert("Name and Phone are required!");
+    return;
+  }
+
+  try {
+    const url = buildProxyUrl(data);
+    const res = await fetch(url);
+    const result = await res.json();
+    closeModal();
+    if (result.success) {
+      alert("✅ Offer submitted successfully!");
+      load(); // refresh map
+    } else {
+      alert("❌ " + (result.error || "Failed to submit"));
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Network error. Check console.");
+  }
+}
+
+// Post new job
+document.getElementById("postForm").onsubmit = async function(e) {
+  e.preventDefault();
+  const f = e.target;
+  const data = {
+    action: "submitRequest",
+    name: f[0].value,
+    phone: f[1].value,
+    email: f[2].value,
+    location: f[3].value,
+    description: f[4].value,
+    budget: f[5].value
+  };
+
+  if (!data.location) {
+    alert("Please select an area!");
+    return;
+  }
+
+  try {
+    const url = buildProxyUrl(data);
+    const res = await fetch(url);
+    const result = await res.json();
+    if (result.success) {
+      alert("✅ Job posted! Marker appearing soon.");
+      f.reset();
+      load();
+    } else {
+      alert("❌ " + (result.error || "Failed to post"));
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Failed to post job. Check console.");
+  }
+};
+
+// Initial load
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>
