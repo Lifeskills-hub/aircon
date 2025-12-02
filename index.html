@@ -2,36 +2,36 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>SG Aircon Repair Map - FINAL WORKING</title>
+  <title>SG Aircon Repair Map - FIXED</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    body { background:#f0f8ff; margin:0; font-family:Arial; }
-    #map { height:600px; width:100%; border-radius:20px; box-shadow:0 15px 40px rgba(0,0,0,0.3); margin:20px 0; }
-    .header { background:linear-gradient(135deg,#007bff,#00c6ff); color:white; padding:40px 0; text-align:center; }
-    .form-card { background:white; border-radius:20px; box-shadow:0 15px 40px rgba(0,0,0,0.2); padding:35px; margin:20px 0; }
-    .pulse { background:#ff0000; width:32px; height:32px; border-radius:50%; border:6px solid white; box-shadow:0 0 0 0 rgba(255,0,0,1); animation:pulse 2s infinite; }
-    @keyframes pulse {0%{box-shadow:0 0 0 0 rgba(255,0,0,0.7)} 70%{box-shadow:0 0 0 25px rgba(255,0,0,0)} 100%{box-shadow:0 0 0 0 rgba(255,0,0,0)}}
+    body { background: #f0f8ff; margin: 0; font-family: Arial; }
+    #map { height: 600px; width: 100%; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.3); margin: 25px 0; }
+    .header { background: linear-gradient(135deg, #007bff, #00c6ff); color: white; padding: 40px 0; text-align: center; }
+    .form-card { background: white; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); padding: 35px; }
+    .pulse { background: #ff0000; width: 32px; height: 32px; border-radius: 50%; border: 6px solid white; box-shadow: 0 0 0 0 rgba(255,0,0,1); animation: pulse 2s infinite; }
+    @keyframes pulse {0% {box-shadow: 0 0 0 0 rgba(255,0,0,0.7);} 70% {box-shadow: 0 0 0 25px rgba(255,0,0,0);} 100% {box-shadow: 0 0 0 0 rgba(255,0,0,0);}}
   </style>
 </head>
 <body>
 
 <div class="header">
   <h1>SG Aircon Repair Map</h1>
-  <p>Real-time jobs • Red markers = open jobs</p>
+  <p>Post job → Red marker appears instantly</p>
 </div>
 
 <div class="container">
   <div class="form-card">
-    <h3 class="text-success">Post New Job</h3>
+    <h3 class="text-primary">Post New Job</h3>
     <form id="postForm" class="row g-3">
       <div class="col-md-6"><input class="form-control" placeholder="Your Name" required></div>
       <div class="col-md-6"><input class="form-control" placeholder="Phone" required></div>
       <div class="col-12"><input class="form-control" placeholder="Email (optional)"></div>
       <div class="col-12">
-        <select class="form-select form-select-lg" id="location" required>
+        <select class="form-select" id="location" required>
           <option value="">Choose Area</option>
           <option>Jurong East</option><option>Tampines</option><option>Yishun</option><option>Bedok</option>
           <option>Woodlands</option><option>Ang Mo Kio</option><option>Bukit Batok</option><option>Choa Chu Kang</option>
@@ -40,20 +40,20 @@
       </div>
       <div class="col-12"><textarea class="form-control" rows="3" placeholder="Problem" required></textarea></div>
       <div class="col-md-6"><input class="form-control" type="number" placeholder="Budget SGD" required></div>
-      <div class="col-12 text-end"><button type="submit" class="btn btn-danger btn-lg">POST</button></div>
+      <div class="col-12 text-end"><button type="submit" class="btn btn-primary btn-lg">POST</button></div>
     </form>
   </div>
 
   <div id="map"></div>
-  <div class="text-center"><h5>Live Jobs: <span id="count" class="text-danger">0</span></h5></div>
+  <div class="text-center"><h5 class="text-primary">Live Jobs: <span id="count">0</span></h5></div>
 </div>
 
 <script>
-// YOUR REAL URL
+// APPS SCRIPT URL
 const RAW_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
 const API_URL = "https://corsproxy.io/?" + encodeURIComponent(RAW_URL);
 
-// EXACT COORDINATES FOR YOUR LOCATIONS
+// COORDS
 const COORDS = {
   "Jurong East": [1.3331, 103.7423],
   "Tampines": [1.3532, 103.9454],
@@ -81,14 +81,16 @@ async function load() {
     let count = 0;
 
     data.forEach(r => {
-      if (!r || r.Status !== "Open") return;
+      if (r.Status !== "Open") return;
 
-      // THIS FIXES YOUR MIXED-UP SHEET COLUMNS
-      const name = r.Name || r.Status || "Unknown";
-      const phone = r.Phone || r.Name || "No phone";
-      const location = r.Location || r.Email || r.Phone || "Unknown";
-      const problem = r.Description || r.Location || "No problem";
-      const budget = r.Budget || "TBC";
+      // FIXED MAPPING FOR YOUR SHEET
+      const name = r.Status;  // Status is name
+      const phone = r.Name;  // Name is phone
+      const email = r.Phone;  // Phone is email
+      const location = r.Email;  // Email is location
+      const problem = r.Location;  // Location is problem
+      const budget = r.Description;  // Description is budget
+      const status = r.Budget;  // Budget is status
 
       const coord = COORDS[location];
       if (!coord) return;
@@ -98,7 +100,7 @@ async function load() {
       }).bindPopup(`
         <b style="color:red">${problem}</b><hr>
         <b>Name:</b> ${name}<br>
-        <b>Phone:</b> <a href="tel:${phone}">${phone}</a><br>
+        <b>Phone:</b> ${phone}<br>
         <b>Location:</b> ${location}<br>
         <b>Budget:</b> S$${budget}
       `).addTo(markers);
@@ -114,7 +116,7 @@ document.getElementById("postForm").onsubmit = async e => {
   e.preventDefault();
   const f = e.target;
   const loc = f[3].value;
-  if (!COORDS[loc]) { alert("Pick a location!"); return; }
+  if (!COORDS[loc]) { alert("Pick area!"); return; }
 
   await fetch(RAW_URL, {method:"POST", mode:"no-cors", body:JSON.stringify({
     action:"submitRequest",
