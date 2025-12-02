@@ -98,7 +98,7 @@ document.getElementById("requestForm").onsubmit = async (e) => {
     description: form[4].value,
     budget: form[5].value,
     photos: "" // you can add file upload later
-  };
+  }; 
 
   await fetch(API_URL, {
     method: "POST",
