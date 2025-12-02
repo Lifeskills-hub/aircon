@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>SG Aircon Repair Map - MARKERS FIXED!</title>
+  <title>SG Aircon Repair Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -13,7 +13,11 @@
     .header { background: linear-gradient(135deg, #007bff, #00c6ff); color: white; padding: 40px 0; text-align: center; }
     .form-card { background: white; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); padding: 35px; }
     .pulse { background: #ff0000; width: 32px; height: 32px; border-radius: 50%; border: 6px solid white; box-shadow: 0 0 0 0 rgba(255,0,0,1); animation: pulse 2s infinite; }
-    @keyframes pulse {0% {box-shadow: 0 0 0 0 rgba(255,0,0,0.7);} 70% {box-shadow: 0 0 0 25px rgba(255,0,0,0);} 100% {box-shadow: 0 0 0 0 rgba(255,0,0,0);}}
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.7); }
+      70% { box-shadow: 0 0 0 25px rgba(255,0,0,0); }
+      100% { box-shadow: 0 0 0 0 rgba(255,0,0,0); }
+    }
   </style>
 </head>
 <body>
@@ -31,7 +35,7 @@
       <div class="col-md-6"><input class="form-control" placeholder="Phone" required></div>
       <div class="col-12"><input class="form-control" placeholder="Email (optional)"></div>
       <div class="col-12">
-        <select class="form-select" id="location" required>
+        <select class="form-select" required>
           <option value="">Choose Area</option>
           <option>Jurong East</option><option>Tampines</option><option>Yishun</option><option>Bedok</option>
           <option>Woodlands</option><option>Ang Mo Kio</option><option>Bukit Batok</option><option>Choa Chu Kang</option>
@@ -50,16 +54,14 @@
 </div>
 
 <script>
-// APPS SCRIPT URL
 const RAW_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec?action=getRequests";
 const API_URL = "https://corsproxy.io/?" + encodeURIComponent(RAW_URL);
 
-// COORDS
 const COORDS = {
   "jurong east": [1.3331, 103.7423],
   "tampines": [1.3532, 103.9454],
   "yishun": [1.4294, 103.8354],
-  "bedok": [1.3235, 103.9273],
+  "bedok": [1.3235, 103.8973],
   "woodlands": [1.4369, 103.7865],
   "ang mo kio": [1.3698, 103.8466],
   "bukit batok": [1.3491, 103.7497],
@@ -76,10 +78,7 @@ L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { attribution:
 let markers = L.layerGroup().addTo(map);
 
 function cleanLocation(loc) {
-  if (loc) {
-    return loc.toLowerCase().replace(/\d+/g, '').trim();  // Remove numbers, lower case, trim
-  }
-  return '';
+  return loc ? loc.toLowerCase().trim() : '';
 }
 
 async function load() {
@@ -92,55 +91,136 @@ async function load() {
     data.forEach(r => {
       if (r.Status !== "Open") return;
 
-      // FIXED MAPPING FOR YOUR SHEET
-      const name = r.Status || "Unknown";  // Status is name
-      const phone = r.Name || "No phone";  // Name is phone
-      const email = r.Phone || "";  // Phone is email
-      const locationRaw = r.Email || r.Phone || "Unknown";  // Email is location
-      const problem = r.Location || "No problem";  // Location is problem
-      const budget = r.Description || "TBC";  // Description is budget
-      const status = r.Budget || "Open";  // Budget is status
-
-      const location = cleanLocation(locationRaw);
-
-      const coord = COORDS[location] || COORDS["jurong east"];  // Fallback to Jurong East if no match
-
+      const loc = cleanLocation(r.Location);
+      const coord = COORDS[loc] || COORDS["jurong east"];
       if (!coord) return;
 
+      const popupContent = `
+        <b style="color:red">${r.Description}</b><hr>
+        <b>Name:</b> ${r.Name || '—'}<br>
+        <b>Phone:</b> ${r.Phone || '—'}<br>
+        <b>Location:</b> ${r.Location || '—'}<br>
+        <b>Budget:</b> S$${r.Budget || 'TBC'}<br>
+        <b>Email:</b> ${r.Email || '—'}<br>
+        <small>Status: ${r.Status}</small><br><br>
+        <button class="btn btn-success btn-sm" onclick="showAcceptForm('${r.Id}')">
+          ✅ Accept Request
+        </button>
+      `;
+
       L.marker(coord, {
-        icon: L.divIcon({ className: "pulse", html: "", iconSize: [32,32] })
-      }).bindPopup(`
-        <b style="color:red">${problem}</b><hr>
-        <b>Name:</b> ${name}<br>
-        <b>Phone:</b> ${phone}<br>
-        <b>Location:</b> ${locationRaw}<br>
-        <b>Budget:</b> S$${budget}<br>
-        <b>Email:</b> ${email}<br>
-        <small>Status: ${status}</small>
-      `).addTo(markers);
+        icon: L.divIcon({ className: "pulse", html: "", iconSize: [32, 32] })
+      }).bindPopup(popupContent).addTo(markers);
 
       count++;
     });
 
     document.getElementById("count").textContent = count;
-  } catch(e) { console.error(e); }
+  } catch(e) {
+    console.error(e);
+  }
 }
 
+// Accept form modal (simple inline)
+function showAcceptForm(requestId) {
+  const html = `
+    <div id="acceptModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;">
+      <div style="background:white;padding:25px;border-radius:15px;width:90%;max-width:500px;">
+        <h5>Accept This Request</h5>
+        <p><small>Request ID: ${requestId}</small></p>
+        <input class="form-control mb-2" id="fixerName" placeholder="Your Name" required>
+        <input class="form-control mb-2" id="fixerPhone" placeholder="Your Phone" required>
+        <input class="form-control mb-2" id="fixerEmail" placeholder="Your Email (optional)">
+        <input class="form-control mb-2" id="proposedPrice" placeholder="Proposed Price (SGD)" type="number">
+        <input class="form-control mb-2" id="availableDate" placeholder="Available Date (e.g. 2025-12-10)" type="date">
+        <input class="form-control mb-2" id="availableTime" placeholder="Available Time (e.g. 14:00)" type="time">
+        <textarea class="form-control mb-3" id="message" placeholder="Message (optional)" rows="2"></textarea>
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-success" onclick="submitAccept('${requestId}')">Submit Offer</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeModal() {
+  const modal = document.getElementById("acceptModal");
+  if (modal) modal.remove();
+}
+
+async function submitAccept(requestId) {
+  const data = {
+    action: "acceptRequest",
+    id: requestId,
+    fixerName: document.getElementById("fixerName").value,
+    fixerPhone: document.getElementById("fixerPhone").value,
+    fixerEmail: document.getElementById("fixerEmail").value,
+    proposedPrice: document.getElementById("proposedPrice").value,
+    availableDate: document.getElementById("availableDate").value,
+    availableTime: document.getElementById("availableTime").value,
+    message: document.getElementById("message").value
+  };
+
+  if (!data.fixerName || !data.fixerPhone) {
+    alert("Name and Phone are required!");
+    return;
+  }
+
+  try {
+    const res = await fetch(RAW_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    closeModal();
+    if (result.success) {
+      alert("✅ Offer submitted! The job owner will contact you.");
+      load(); // Refresh markers (accepted ones may stay or hide — currently stay)
+    } else {
+      alert("❌ Error: " + (result.error || "Unknown"));
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Failed to submit. Check console.");
+  }
+}
+
+// Post new job
 document.getElementById("postForm").onsubmit = async e => {
   e.preventDefault();
   const f = e.target;
   const loc = f[3].value;
-  if (!COORDS[loc.toLowerCase()]) { alert("Pick area!"); return; }
+  if (!loc) { alert("Pick area!"); return; }
 
-  await fetch(RAW_URL, {method:"POST", mode:"no-cors", body:JSON.stringify({
-    action:"submitRequest",
-    name:f[0].value, phone:f[1].value, email:f[2].value,
-    location:loc, description:f[4].value, budget:f[5].value
-  })});
-
-  alert("Posted! Marker appearing...");
-  f.reset();
-  load();
+  try {
+    const res = await fetch(RAW_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "submitRequest",
+        name: f[0].value,
+        phone: f[1].value,
+        email: f[2].value,
+        location: loc,
+        description: f[4].value,
+        budget: f[5].value
+      })
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert("Posted! Marker appearing soon...");
+      f.reset();
+      load();
+    } else {
+      alert("Post failed: " + (result.error || "Unknown error"));
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Failed to post.");
+  }
 };
 
 load();
