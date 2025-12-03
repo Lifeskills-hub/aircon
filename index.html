@@ -247,8 +247,8 @@ function showAcceptForm(id) {
       <input class="form-control mb-2" id="fPhone" placeholder="Your Phone" required>
       <input class="form-control mb-2" id="fEmail" placeholder="Email (optional)">
       <input class="form-control mb-2" id="price" type="number" placeholder="Price (SGD)">
-      <input class="form-control mb-2" id="date" type="date">
-      <input class="form-control mb-2" id="time" type="time">
+<input class="form-control mb-2" id="date" type="text" placeholder="Select Date" onfocus="(this.type='date')" onblur="if(this.value==''){this.type='text'}">
+<input class="form-control mb-2" id="time" type="text" placeholder="Select Time" onfocus="(this.type='time')" onblur="if(this.value==''){this.type='text'}">
       <textarea class="form-control mb-3" id="msg" rows="2" placeholder="Message"></textarea>
       <div class="text-end">
         <button class="btn btn-secondary me-2" onclick="closeModal()">Cancel</button>
