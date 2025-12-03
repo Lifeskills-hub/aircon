@@ -77,7 +77,7 @@
 </div>
 
 <script>
-// === UPDATE THIS URL AFTER DEPLOYING YOUR SCRIPT ===
+// UPDATE THIS AFTER DEPLOYING
 const BASE_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID_HERE/exec";
 
 let currentUser = null;
@@ -85,29 +85,48 @@ let currentUser = null;
 function showRegister() { document.getElementById("registerModal").style.display = "flex"; }
 function hideRegister() { document.getElementById("registerModal").style.display = "none"; }
 
+// SAFE FETCH HELPER (NEW — prevents JSON error forever!)
+async function safeFetch(url) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    console.error("Server error:", res.status, res.statusText);
+    alert("Server error — try again");
+    return null;
+  }
+  try {
+    return await res.json();
+  } catch (e) {
+    console.error("Invalid JSON:", e, await res.text().substring(0, 200));
+    alert("Invalid response from server — check console");
+    return null;
+  }
+}
+
 async function register() {
   const user = document.getElementById("regUser").value.trim();
   const pass = document.getElementById("regPass").value;
   const phone = document.getElementById("regPhone").value.trim();
   if (!user || !pass || !phone) return alert("All fields required");
-  const res = await fetch(buildProxyUrl({action:"register", user, pass, phone}));
-  const json = await res.json();
-  alert(json.success ? "Account created! Now login." : json.error);
-  if (json.success) hideRegister();
+  const json = await safeFetch(buildProxyUrl({action:"register", user, pass, phone}));
+  if (json && json.success) {
+    alert("Account created! Now login.");
+    hideRegister();
+  } else if (json) {
+    alert(json.error || "Registration failed");
+  }
 }
 
 async function login() {
   const user = document.getElementById("username").value.trim();
   const pass = document.getElementById("password").value;
   if (!user || !pass) return alert("Fill username & password");
-  const res = await fetch(buildProxyUrl({action:"login", user, pass}));
-  const json = await res.json();
-  if (json.success) {
+  const json = await safeFetch(buildProxyUrl({action:"login", user, pass}));
+  if (json && json.success) {
     currentUser = {username: user, phone: json.phone};
     localStorage.setItem("sgAirconUser", JSON.stringify(currentUser));
     initApp();
-  } else {
-    alert("Wrong username or password");
+  } else if (json) {
+    alert(json.error || "Login failed");
   }
 }
 
@@ -147,14 +166,13 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:
 let markers = L.layerGroup().addTo(map);
 
 async function load() {
-  const res = await fetch(buildProxyUrl({action:"getAll"}));
-  const data = await res.json();
-  if (!Array.isArray(data)) return;
+  const json = await safeFetch(buildProxyUrl({action:"getAll"}));
+  if (!json || !Array.isArray(json)) return;
 
   markers.clearLayers();
   let openCount = 0;
 
-  data.forEach(r => {
+  json.forEach(r => {
     const loc = (r.Location||"").toLowerCase().trim();
     const coord = COORDS[loc] || COORDS["jurong east"];
     if (!coord) return;
@@ -252,20 +270,26 @@ async function submitOffer(id) {
     message: document.getElementById("msg").value
   };
   if (!data.name || !data.phone) return alert("Name & Phone required");
-  const res = await fetch(buildProxyUrl(data));
-  const json = await res.json();
+  const json = await safeFetch(buildProxyUrl(data));
   closeModal();
-  alert(json.success ? "Offer sent!" : "Error");
-  load();
+  if (json && json.success) {
+    alert("Offer sent!");
+    load();
+  } else {
+    alert("Error sending offer");
+  }
 }
 
 async function confirmFixer(requestId, idx) {
   if (!confirm("Confirm this fixer?")) return;
-  const res = await fetch(buildProxyUrl({action:"confirmFixer", requestId, offerIndex:idx}));
-  const json = await res.json();
+  const json = await safeFetch(buildProxyUrl({action:"confirmFixer", requestId, offerIndex:idx}));
   closeModal();
-  alert(json.success ? "Fixer confirmed!" : "Error");
-  load();
+  if (json && json.success) {
+    alert("Fixer confirmed!");
+    load();
+  } else {
+    alert("Error confirming fixer");
+  }
 }
 
 document.getElementById("postForm").onsubmit = async function(e) {
@@ -282,13 +306,14 @@ document.getElementById("postForm").onsubmit = async function(e) {
     budget: f[5].value
   };
   if (!data.name || !data.location || !data.budget) return alert("Fill required fields");
-  const res = await fetch(buildProxyUrl(data));
-  const json = await res.json();
-  if (json.success) {
+  const json = await safeFetch(buildProxyUrl(data));
+  if (json && json.success) {
     alert("Job posted!");
     f.reset();
     document.getElementById("customerPhone").value = currentUser.phone;
     load();
+  } else {
+    alert("Error posting job");
   }
 };
 
