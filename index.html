@@ -81,7 +81,7 @@
 </div>
 
 <script>
-// ✅ CORRECT BASE_URL — REAL SCRIPT ID, NO PLACEHOLDER, NO TRAILING SPACES
+// ✅ CORRECT BASE_URL — REAL SCRIPT ID, NO PLACEHOLDER
 const BASE_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
 
 let currentUser = null;
@@ -106,7 +106,7 @@ async function safeFetch(url) {
   }
 }
 
-// ✅ Builds proxy URL using corsproxy.io (safe for public APIs)
+// Build proxy URL using corsproxy.io
 function buildProxyUrl(params) {
   const url = new URL(BASE_URL);
   Object.entries(params).forEach(([k, v]) => {
@@ -117,6 +117,7 @@ function buildProxyUrl(params) {
   return "https://corsproxy.io/?" + encodeURIComponent(url.toString());
 }
 
+// ✅ REGISTER — username will be lowercased in backend
 async function register() {
   const user = document.getElementById("regUser").value.trim();
   const pass = document.getElementById("regPass").value;
@@ -131,8 +132,10 @@ async function register() {
   }
 }
 
+// ✅ LOGIN — normalize username to lowercase to match stored version
 async function login() {
-  const user = document.getElementById("username").value.trim();
+  // 🔑 CRITICAL: convert to lowercase to match how it's stored
+  const user = document.getElementById("username").value.trim().toLowerCase();
   const pass = document.getElementById("password").value;
   if (!user || !pass) return alert("Fill username & password");
   const json = await safeFetch(buildProxyUrl({action:"login", user, pass}));
@@ -162,12 +165,13 @@ function initApp() {
   setInterval(load, 30000);
 }
 
-// Auto-login
+// Auto-login if saved
 if (localStorage.getItem("sgAirconUser")) {
   currentUser = JSON.parse(localStorage.getItem("sgAirconUser"));
   initApp();
 }
 
+// Coordinates for Singapore areas
 const COORDS = { 
   "jurong east":[1.3331,103.7423], "tampines":[1.3532,103.9454], "yishun":[1.4294,103.8354], 
   "bedok":[1.3235,103.8973], "woodlands":[1.4369,103.7865], "ang mo kio":[1.3698,103.8466], 
@@ -176,10 +180,14 @@ const COORDS = {
   "bukit panjang":[1.3786,103.7623] 
 };
 
+// Initialize map
 const map = L.map('map').setView([1.3521, 103.8198], 11);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+  attribution: '© OpenStreetMap' 
+}).addTo(map);
 let markers = L.layerGroup().addTo(map);
 
+// Load all job requests
 async function load() {
   const json = await safeFetch(buildProxyUrl({action:"getAll"}));
   if (!json || !Array.isArray(json)) return;
@@ -230,6 +238,7 @@ async function load() {
   document.getElementById("count").textContent = openCount;
 }
 
+// Show bid form
 function showAcceptForm(id) {
   const html = `<div id="modal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:9999;">
     <div style="background:white;padding:30px;border-radius:15px;max-width:90%;width:500px;">
@@ -250,6 +259,7 @@ function showAcceptForm(id) {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
+// Show offers list
 function showOffers(requestId, offers) {
   if (!currentUser) { alert("Login required"); return; }
   const list = (offers||[]).map((o,i) => `
@@ -274,6 +284,7 @@ function showOffers(requestId, offers) {
 
 function closeModal() { document.getElementById("modal")?.remove(); }
 
+// Submit offer
 async function submitOffer(id) {
   const data = { 
     action:"submitOffer", requestId:id,
@@ -296,6 +307,7 @@ async function submitOffer(id) {
   }
 }
 
+// Confirm fixer
 async function confirmFixer(requestId, idx) {
   if (!confirm("Confirm this fixer?")) return;
   const json = await safeFetch(buildProxyUrl({action:"confirmFixer", requestId, offerIndex:idx}));
@@ -308,6 +320,7 @@ async function confirmFixer(requestId, idx) {
   }
 }
 
+// Post new job
 document.getElementById("postForm").onsubmit = async function(e) {
   e.preventDefault();
   if (!currentUser) return alert("Login required");
