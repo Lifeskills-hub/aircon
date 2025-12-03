@@ -152,7 +152,12 @@ function buildProxyUrl(params) {
 
 const COORDS = { /* same as before */ };
 const map = L.map('map').setView([1.3521, 103.8198], 11);
-L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}').addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors',
+  maxZoom: 19
+}).addTo(map);
+
+  
 let markers = L.layerGroup().addTo(map);
 
 async function load() {
