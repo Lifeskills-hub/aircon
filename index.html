@@ -14,7 +14,11 @@
     .form-card { background: white; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); padding: 35px; margin: 20px auto; max-width: 800px; }
     .pulse { background: #ff0000; width: 32px; height: 32px; border-radius: 50%; border: 6px solid white; box-shadow: 0 0 0 0 rgba(255,0,0,1); animation: pulse 2s infinite; }
     .confirmed { background: #28a745; width: 32px; height: 32px; border-radius: 50%; border: 6px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px; }
-    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.7); } 70% { box-shadow: 0 0 0 25px rgba(255,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(255,0,0,0); } }
+    @keyframes pulse { 
+      0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.7); } 
+      70% { box-shadow: 0 0 0 25px rgba(255,0,0,0); } 
+      100% { box-shadow: 0 0 0 0 rgba(255,0,0,0); } 
+    }
     #loginScreen, #registerModal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:99999; }
   </style>
 </head>
@@ -77,15 +81,15 @@
 </div>
 
 <script>
-// UPDATE THIS AFTER DEPLOYING
-const BASE_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID_HERE/exec";
+// ✅ CORRECT BASE_URL — REAL SCRIPT ID, NO PLACEHOLDER, NO TRAILING SPACES
+const BASE_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
 
 let currentUser = null;
 
 function showRegister() { document.getElementById("registerModal").style.display = "flex"; }
 function hideRegister() { document.getElementById("registerModal").style.display = "none"; }
 
-// SAFE FETCH HELPER (NEW — prevents JSON error forever!)
+// SAFE FETCH HELPER
 async function safeFetch(url) {
   const res = await fetch(url);
   if (!res.ok) {
@@ -100,6 +104,17 @@ async function safeFetch(url) {
     alert("Invalid response from server — check console");
     return null;
   }
+}
+
+// ✅ Builds proxy URL using corsproxy.io (safe for public APIs)
+function buildProxyUrl(params) {
+  const url = new URL(BASE_URL);
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== null && v !== undefined && v !== "") {
+      url.searchParams.set(k, v);
+    }
+  });
+  return "https://corsproxy.io/?" + encodeURIComponent(url.toString());
 }
 
 async function register() {
@@ -153,13 +168,13 @@ if (localStorage.getItem("sgAirconUser")) {
   initApp();
 }
 
-function buildProxyUrl(params) {
-  const url = new URL(BASE_URL);
-  Object.entries(params).forEach(([k,v]) => v && url.searchParams.set(k,v));
-  return "https://corsproxy.io/?" + encodeURIComponent(url.toString());
-}
-
-const COORDS = { "jurong east":[1.3331,103.7423], "tampines":[1.3532,103.9454], "yishun":[1.4294,103.8354], "bedok":[1.3235,103.8973], "woodlands":[1.4369,103.7865], "ang mo kio":[1.3698,103.8466], "bukit batok":[1.3491,103.7497], "choa chu kang":[1.3852,103.7445], "sengkang":[1.3915,103.8950], "punggol":[1.4052,103.9024], "hougang":[1.3734,103.8867], "clementi":[1.3148,103.7649], "bukit panjang":[1.3786,103.7623] };
+const COORDS = { 
+  "jurong east":[1.3331,103.7423], "tampines":[1.3532,103.9454], "yishun":[1.4294,103.8354], 
+  "bedok":[1.3235,103.8973], "woodlands":[1.4369,103.7865], "ang mo kio":[1.3698,103.8466], 
+  "bukit batok":[1.3491,103.7497], "choa chu kang":[1.3852,103.7445], "sengkang":[1.3915,103.8950], 
+  "punggol":[1.4052,103.9024], "hougang":[1.3734,103.8867], "clementi":[1.3148,103.7649], 
+  "bukit panjang":[1.3786,103.7623] 
+};
 
 const map = L.map('map').setView([1.3521, 103.8198], 11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
@@ -184,7 +199,7 @@ async function load() {
     if (!isConfirmed) openCount++;
 
     const icon = isConfirmed
-      ? L.divIcon({className:"confirmed",html:"Check",iconSize:[32,32]})
+      ? L.divIcon({className:"confirmed",html:"✔",iconSize:[32,32]})
       : L.divIcon({className:"pulse",html:"",iconSize:[32,32]});
 
     let buttonHtml = "";
@@ -260,7 +275,8 @@ function showOffers(requestId, offers) {
 function closeModal() { document.getElementById("modal")?.remove(); }
 
 async function submitOffer(id) {
-  const data = { action:"submitOffer", requestId:id,
+  const data = { 
+    action:"submitOffer", requestId:id,
     name: document.getElementById("fName").value,
     phone: document.getElementById("fPhone").value,
     email: document.getElementById("fEmail").value,
