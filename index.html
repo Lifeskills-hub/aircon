@@ -8,38 +8,37 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    body { background: #f0f8ff; margin: 0; font-family: Arial; }
+    body { background: #f0f8ff; margin: 0; font-family: Arial, sans-serif; }
     #map { height: 600px; width: 100%; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.3); margin: 25px 0; }
     .header { background: linear-gradient(135deg, #007bff, #00c6ff); color: white; padding: 40px 0; text-align: center; }
     .form-card { background: white; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); padding: 35px; margin: 20px auto; max-width: 800px; }
     .pulse { background: #ff0000; width: 32px; height: 32px; border-radius: 50%; border: 6px solid white; box-shadow: 0 0 0 0 rgba(255,0,0,1); animation: pulse 2s infinite; }
     .confirmed { background: #28a745; width: 32px; height: 32px; border-radius: 50%; border: 6px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px; }
     @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.7); } 70% { box-shadow: 0 0 0 25px rgba(255,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(255,0,0,0); } }
-    #loginScreen { position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;justify-content:center;align-items:center;z-index:99999; }
+    #loginScreen, #registerModal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:99999; }
   </style>
 </head>
 <body>
 
 <!-- LOGIN SCREEN -->
 <div id="loginScreen">
-  <div style="background:white;padding:40px;border-radius:20px;text-align:center;max-width:400px;">
+  <div style="background:white;padding:40px;border-radius:20px;text-align:center;max-width:400px;width:90%;">
     <h3>SG Aircon Repair Map</h3>
-    <p>Login with your username & password</p>
+    <p>Login or create account</p>
     <input type="text" id="username" class="form-control mb-3" placeholder="Username" autofocus>
     <input type="password" id="password" class="form-control mb-3" placeholder="Password">
-    <button class="btn btn-primary btn-lg w-100" onclick="login()">Login</button>
-    <small class="text-muted d-block mt-3">New? Just register below</small>
-    <button class="btn btn-outline-success mt-2" onclick="showRegister()">Register New Account</button>
+    <button class="btn btn-primary btn-lg w-100 mb-2" onclick="login()">Login</button>
+    <button class="btn btn-outline-success w-100" onclick="showRegister()">Register New Account</button>
   </div>
 </div>
 
 <!-- REGISTER MODAL -->
-<div id="registerModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:99999;justify-content:center;align-items:center;">
-  <div style="background:white;padding:30px;border-radius:15px;max-width:400px;">
+<div id="registerModal" style="display:none;">
+  <div style="background:white;padding:30px;border-radius:15px;max-width:400px;width:90%;">
     <h5>Create Account</h5>
     <input type="text" id="regUser" class="form-control mb-2" placeholder="Choose Username">
     <input type="password" id="regPass" class="form-control mb-2" placeholder="Choose Password">
-    <input type="text" id="regPhone" class="form-control mb-3" placeholder="Your Phone (for customer mode)">
+    <input type="text" id="regPhone" class="form-control mb-3" placeholder="Your Phone Number">
     <div class="text-end">
       <button class="btn btn-secondary me-2" onclick="hideRegister()">Cancel</button>
       <button class="btn btn-success" onclick="register()">Create Account</button>
@@ -49,7 +48,7 @@
 
 <div class="header" id="mainHeader" style="display:none">
   <h1>SG Aircon Repair Map</h1>
-  <p id="userInfo">Welcome, <b id="usernameDisplay"></b>! | <a href="#" onclick="logout()" style="color:#fff">Logout</a></p>
+  <p>Welcome, <b id="usernameDisplay"></b>! | <a href="#" onclick="logout()" style="color:#fff;text-decoration:underline">Logout</a></p>
 </div>
 
 <div class="container" id="mainContent" style="display:none">
@@ -57,7 +56,7 @@
     <h3 class="text-primary">Post New Job</h3>
     <form id="postForm" class="row g-3">
       <div class="col-md-6"><input class="form-control" placeholder="Your Name" required></div>
-      <div class="col-md-6"><input class="form-control" id="customerPhone" placeholder="Your Phone (must match login)" required></div>
+      <div class="col-md-6"><input class="form-control" id="customerPhone" placeholder="Your Phone" readonly></div>
       <div class="col-12"><input class="form-control" placeholder="Email (optional)"></div>
       <div class="col-12">
         <select class="form-select" required>
@@ -74,14 +73,14 @@
     </form>
   </div>
   <div id="map"></div>
-  <div class="text-center mb-5"><h5 class="text-primary">Open Jobs: <span id="count">0</span></h5></div>
+  <div class="text-center my-4"><h5 class="text-primary">Open Jobs: <span id="count">0</span></h5></div>
 </div>
 
 <script>
-// UPDATE THIS URL AFTER DEPLOYING
-const BASE_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
+// === UPDATE THIS URL AFTER DEPLOYING YOUR SCRIPT ===
+const BASE_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID_HERE/exec";
 
-let currentUser = null;  // {username, phone}
+let currentUser = null;
 
 function showRegister() { document.getElementById("registerModal").style.display = "flex"; }
 function hideRegister() { document.getElementById("registerModal").style.display = "none"; }
@@ -91,35 +90,24 @@ async function register() {
   const pass = document.getElementById("regPass").value;
   const phone = document.getElementById("regPhone").value.trim();
   if (!user || !pass || !phone) return alert("All fields required");
-
   const res = await fetch(buildProxyUrl({action:"register", user, pass, phone}));
   const json = await res.json();
-  if (json.success) {
-    alert("Account created! Now login");
-    hideRegister();
-  } else {
-    alert("Error: " + json.error);
-  }
+  alert(json.success ? "Account created! Now login." : json.error);
+  if (json.success) hideRegister();
 }
 
 async function login() {
   const user = document.getElementById("username").value.trim();
   const pass = document.getElementById("password").value;
-  if (!user || !pass) return alert("Enter username & password");
-
+  if (!user || !pass) return alert("Fill username & password");
   const res = await fetch(buildProxyUrl({action:"login", user, pass}));
   const json = await res.json();
   if (json.success) {
     currentUser = {username: user, phone: json.phone};
     localStorage.setItem("sgAirconUser", JSON.stringify(currentUser));
-    document.getElementById("loginScreen").remove();
-    document.getElementById("mainHeader").style.display = "block";
-    document.getElementById("mainContent").style.display = "block";
-    document.getElementById("usernameDisplay").textContent = user;
-    load();
-    setInterval(load, 30000);
+    initApp();
   } else {
-    alert("Wrong username or password!");
+    alert("Wrong username or password");
   }
 }
 
@@ -130,15 +118,20 @@ function logout() {
   }
 }
 
-// Auto-login if saved
-if (localStorage.getItem("sgAirconUser")) {
-  currentUser = JSON.parse(localStorage.getItem("sgAirconUser"));
+function initApp() {
   document.getElementById("loginScreen").remove();
   document.getElementById("mainHeader").style.display = "block";
   document.getElementById("mainContent").style.display = "block";
   document.getElementById("usernameDisplay").textContent = currentUser.username;
+  document.getElementById("customerPhone").value = currentUser.phone;
   load();
   setInterval(load, 30000);
+}
+
+// Auto-login
+if (localStorage.getItem("sgAirconUser")) {
+  currentUser = JSON.parse(localStorage.getItem("sgAirconUser"));
+  initApp();
 }
 
 function buildProxyUrl(params) {
@@ -147,17 +140,10 @@ function buildProxyUrl(params) {
   return "https://corsproxy.io/?" + encodeURIComponent(url.toString());
 }
 
-// Rest of the map code (load, showOffers, submitOffer, etc.) is SAME as before
-// Just add currentUser.phone instead of currentUserPhone
+const COORDS = { "jurong east":[1.3331,103.7423], "tampines":[1.3532,103.9454], "yishun":[1.4294,103.8354], "bedok":[1.3235,103.8973], "woodlands":[1.4369,103.7865], "ang mo kio":[1.3698,103.8466], "bukit batok":[1.3491,103.7497], "choa chu kang":[1.3852,103.7445], "sengkang":[1.3915,103.8950], "punggol":[1.4052,103.9024], "hougang":[1.3734,103.8867], "clementi":[1.3148,103.7649], "bukit panjang":[1.3786,103.7623] };
 
-const COORDS = { /* same as before */ };
 const map = L.map('map').setView([1.3521, 103.8198], 11);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap contributors',
-  maxZoom: 19
-}).addTo(map);
-
-  
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 let markers = L.layerGroup().addTo(map);
 
 async function load() {
@@ -187,22 +173,124 @@ async function load() {
     if (isConfirmed) {
       buttonHtml = `<b style="color:green">Confirmed with ${r.ConfirmedFixerName}</b>`;
     } else if (hasOffers && isCustomer) {
-      buttonHtml = `<button class="btn btn-warning btn-sm fw-bold" onclick='showOffers("${r.Id}", ${JSON.stringify(r.Offers)}, "${r.Phone}")'>Choose Fixer (${r.Offers.length})</button>`;
+      buttonHtml = `<button class="btn btn-warning btn-sm fw-bold" onclick='showOffers("${r.Id}", ${JSON.stringify(r.Offers)})'>Choose Fixer (${r.Offers.length})</button>`;
     } else if (hasOffers) {
       buttonHtml = `<span class="text-muted me-2">${r.Offers.length} offers</span> <button class="btn btn-success btn-sm" onclick="showAcceptForm('${r.Id}')">Bid</button>`;
     } else {
       buttonHtml = `<button class="btn btn-success btn-sm" onclick="showAcceptForm('${r.Id}')">Bid</button>`;
     }
 
-    const popupContent = `...`; // same as before
+    const popupContent = `
+      <b style="color:${isConfirmed?'green':'red'}">${r.Description}</b><hr>
+      <b>Name:</b> ${r.Name}<br>
+      <b>Phone:</b> ${r.Phone}<br>
+      <b>Location:</b> ${r.Location}<br>
+      <b>Budget:</b> S$${r.Budget}<br>
+      ${isCustomer ? '<b style="color:green">This is YOUR job</b><br>' : ''}
+      <small>Status: <b>${r.Status || 'Open'}</b></small><br><br>
+      ${buttonHtml}
+    `;
+
     L.marker(coord, {icon}).bindPopup(popupContent).addTo(markers);
   });
 
   document.getElementById("count").textContent = openCount;
 }
 
-// Keep all other functions: showAcceptForm, showOffers, submitOffer, confirmFixer, postForm
-// Just replace currentUserPhone with currentUser.phone
+function showAcceptForm(id) {
+  const html = `<div id="modal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:9999;">
+    <div style="background:white;padding:30px;border-radius:15px;max-width:90%;width:500px;">
+      <h5>Submit Your Offer</h5>
+      <input class="form-control mb-2" id="fName" placeholder="Your Name" required>
+      <input class="form-control mb-2" id="fPhone" placeholder="Your Phone" required>
+      <input class="form-control mb-2" id="fEmail" placeholder="Email (optional)">
+      <input class="form-control mb-2" id="price" type="number" placeholder="Price (SGD)">
+      <input class="form-control mb-2" id="date" type="date">
+      <input class="form-control mb-2" id="time" type="time">
+      <textarea class="form-control mb-3" id="msg" rows="2" placeholder="Message"></textarea>
+      <div class="text-end">
+        <button class="btn btn-secondary me-2" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-success" onclick="submitOffer('${id}')">Send Offer</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function showOffers(requestId, offers) {
+  if (!currentUser) { alert("Login required"); return; }
+  const list = (offers||[]).map((o,i) => `
+    <div class="border p-3 mb-2 rounded bg-light">
+      <b>${o.name}</b> - S$${o.price||'TBD'}<br>
+      <small>${o.phone} | ${o.date||'?'} ${o.time||''}</small><br>
+      ${o.message ? '<em>'+o.message+'</em>' : ''}
+      <div class="text-end mt-2">
+        <button class="btn btn-success btn-sm" onclick="confirmFixer('${requestId}',${i})">Choose This Fixer</button>
+      </div>
+    </div>
+  `).join('');
+  const html = `<div id="modal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:9999;">
+    <div style="background:white;padding:30px;border-radius:15px;max-width:90%;width:600px;max-height:80vh;overflow-y:auto;">
+      <h5>Choose Your Fixer</h5>
+      ${list||'<p>No offers yet.</p>'}
+      <div class="text-end mt-3"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeModal() { document.getElementById("modal")?.remove(); }
+
+async function submitOffer(id) {
+  const data = { action:"submitOffer", requestId:id,
+    name: document.getElementById("fName").value,
+    phone: document.getElementById("fPhone").value,
+    email: document.getElementById("fEmail").value,
+    price: document.getElementById("price").value,
+    date: document.getElementById("date").value,
+    time: document.getElementById("time").value,
+    message: document.getElementById("msg").value
+  };
+  if (!data.name || !data.phone) return alert("Name & Phone required");
+  const res = await fetch(buildProxyUrl(data));
+  const json = await res.json();
+  closeModal();
+  alert(json.success ? "Offer sent!" : "Error");
+  load();
+}
+
+async function confirmFixer(requestId, idx) {
+  if (!confirm("Confirm this fixer?")) return;
+  const res = await fetch(buildProxyUrl({action:"confirmFixer", requestId, offerIndex:idx}));
+  const json = await res.json();
+  closeModal();
+  alert(json.success ? "Fixer confirmed!" : "Error");
+  load();
+}
+
+document.getElementById("postForm").onsubmit = async function(e) {
+  e.preventDefault();
+  if (!currentUser) return alert("Login required");
+  const f = e.target;
+  const data = {
+    action: "submitRequest",
+    name: f[0].value.trim(),
+    phone: currentUser.phone,
+    email: f[2].value.trim(),
+    location: f[3].value,
+    description: f[4].value,
+    budget: f[5].value
+  };
+  if (!data.name || !data.location || !data.budget) return alert("Fill required fields");
+  const res = await fetch(buildProxyUrl(data));
+  const json = await res.json();
+  if (json.success) {
+    alert("Job posted!");
+    f.reset();
+    document.getElementById("customerPhone").value = currentUser.phone;
+    load();
+  }
+};
 
 </script>
 </body>
