@@ -13,6 +13,7 @@
     .header { background: linear-gradient(135deg, #007bff, #00c6ff); color: white; padding: 40px 0; text-align: center; }
     .form-card { background: white; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); padding: 35px; }
     .pulse { background: #ff0000; width: 32px; height: 32px; border-radius: 50%; border: 6px solid white; box-shadow: 0 0 0 0 rgba(255,0,0,1); animation: pulse 2s infinite; }
+    .confirmed { background: #28a745; width: 32px; height: 32px; border-radius: 50%; border: 6px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px; }
     @keyframes pulse {
       0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.7); }
       70% { box-shadow: 0 0 0 25px rgba(255,0,0,0); }
@@ -21,12 +22,10 @@
   </style>
 </head>
 <body>
-
 <div class="header">
   <h1>SG Aircon Repair Map</h1>
-  <p>Post job → Red marker appears instantly</p>
+  <p>Post job → Fixers send offers → You choose the best one</p>
 </div>
-
 <div class="container">
   <div class="form-card">
     <h3 class="text-primary">Post New Job</h3>
@@ -43,171 +42,175 @@
           <option>Bukit Panjang</option>
         </select>
       </div>
-      <div class="col-12"><textarea class="form-control" rows="3" placeholder="Problem" required></textarea></div>
+      <div class="col-12"><textarea class="form-control" rows="3" placeholder="Problem Description" required></textarea></div>
       <div class="col-md-6"><input class="form-control" type="number" placeholder="Budget SGD" required></div>
-      <div class="col-12 text-end"><button type="submit" class="btn btn-primary btn-lg">POST</button></div>
+      <div class="col-12 text-end"><button type="submit" class="btn btn-primary btn-lg">POST JOB</button></div>
     </form>
   </div>
-
   <div id="map"></div>
-  <div class="text-center"><h5 class="text-primary">Live Jobs: <span id="count">0</span></h5></div>
+  <div class="text-center"><h5 class="text-primary">Open Jobs: <span id="count">0</span></h5></div>
 </div>
 
 <script>
-// ✅ Base URL of your Google Apps Script web app (no query params)
 const BASE_URL = "https://script.google.com/macros/s/AKfycbxwUoET1X26ak4D1dtVGwMUFZpjl3ldPraf7i8VvYOBNqL0eK4znEsUHaQeFQVS6ewvcA/exec";
 
-// ✅ Build CORS-safe proxy URL
 function buildProxyUrl(params) {
   const url = new URL(BASE_URL);
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.set(key, value.toString());
-    }
+    if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, value);
   }
   return "https://corsproxy.io/?" + encodeURIComponent(url.toString());
 }
 
-// Coordinates for predefined areas
 const COORDS = {
-  "jurong east": [1.3331, 103.7423],
-  "tampines": [1.3532, 103.9454],
-  "yishun": [1.4294, 103.8354],
-  "bedok": [1.3235, 103.8973],
-  "woodlands": [1.4369, 103.7865],
-  "ang mo kio": [1.3698, 103.8466],
-  "bukit batok": [1.3491, 103.7497],
-  "choa chu kang": [1.3852, 103.7445],
-  "sengkang": [1.3915, 103.8950],
-  "punggol": [1.4052, 103.9024],
-  "hougang": [1.3734, 103.8867],
-  "clementi": [1.3148, 103.7649],
+  "jurong east": [1.3331, 103.7423], "tampines": [1.3532, 103.9454], "yishun": [1.4294, 103.8354],
+  "bedok": [1.3235, 103.8973], "woodlands": [1.4369, 103.7865], "ang mo kio": [1.3698, 103.8466],
+  "bukit batok": [1.3491, 103.7497], "choa chu kang": [1.3852, 103.7445], "sengkang": [1.3915, 103.8950],
+  "punggol": [1.4052, 103.9024], "hougang": [1.3734, 103.8867], "clementi": [1.3148, 103.7649],
   "bukit panjang": [1.3786, 103.7623]
 };
 
-// Initialize map
 const map = L.map('map').setView([1.3521, 103.8198], 11);
 L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { attribution: '© Google' }).addTo(map);
 let markers = L.layerGroup().addTo(map);
 
-// Load job markers
 async function load() {
   try {
-    const url = buildProxyUrl({ action: "getRequests" });
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Network response not OK");
+    const res = await fetch(buildProxyUrl({ action: "getAll" }));
     const data = await res.json();
-    
-    if (!Array.isArray(data)) {
-      console.error("Unexpected response:", data);
-      document.getElementById("count").textContent = "Err";
-      return;
-    }
+    if (!Array.isArray(data)) return;
 
     markers.clearLayers();
-    let count = 0;
+    let openCount = 0;
 
     data.forEach(r => {
-      if (r.Status !== "Open") return;
-
       const loc = (r.Location || "").toLowerCase().trim();
       const coord = COORDS[loc] || COORDS["jurong east"];
       if (!coord) return;
 
+      const isConfirmed = r.Status === "Confirmed";
+      const hasOffers = r.Offers && r.Offers.length > 0;
+
+      if (!isConfirmed) openCount++;
+
+      const icon = isConfirmed
+        ? L.divIcon({ className: "confirmed", html: "✓", iconSize: [32, 32] })
+        : L.divIcon({ className: "pulse", html: "", iconSize: [32, 32] });
+
+      let buttonHtml = "";
+      if (isConfirmed) {
+        buttonHtml = `<b style="color:green">Confirmed with ${r.ConfirmedFixerName || 'Fixer'}</b>`;
+      } else if (hasOffers) {
+        buttonHtml = `<button class="btn btn-info btn-sm" onclick="showOffers('${r.Id}', '${r.Offers}')">View Offers (${r.Offers.length})</button>`;
+      } else {
+        buttonHtml = `<button class="btn btn-success btn-sm" onclick="showAcceptForm('${r.Id}')">Accept Request</button>`;
+      }
+
       const popupContent = `
-        <b style="color:red">${r.Description}</b><hr>
-        <b>Name:</b> ${r.Name || '—'}<br>
-        <b>Phone:</b> ${r.Phone || '—'}<br>
-        <b>Location:</b> ${r.Location || '—'}<br>
-        <b>Budget:</b> S$${r.Budget || 'TBC'}<br>
-        <b>Email:</b> ${r.Email || '—'}<br>
-        <small>Status: ${r.Status}</small><br><br>
-        <button class="btn btn-success btn-sm" onclick="showAcceptForm('${r.Id}')">
-          ✅ Accept Request
-        </button>
+        <b style="color:${isConfirmed ? 'green' : 'red'}">${r.Description}</b><hr>
+        <b>Name:</b> ${r.Name}<br>
+        <b>Phone:</b> ${r.Phone}<br>
+        <b>Location:</b> ${r.Location}<br>
+        <b>Budget:</b> S$${r.Budget}<br>
+        <small>Status: <b>${r.Status || 'Open'}</b></small><br><br>
+        ${buttonHtml}
       `;
 
-      L.marker(coord, {
-        icon: L.divIcon({ className: "pulse", html: "", iconSize: [32, 32] })
-      }).bindPopup(popupContent).addTo(markers);
-      count++;
+      L.marker(coord, { icon }).bindPopup(popupContent).addTo(markers);
     });
 
-    document.getElementById("count").textContent = count;
+    document.getElementById("count").textContent = openCount;
   } catch (e) {
-    console.error("Load error:", e);
-    document.getElementById("count").textContent = "Err";
+    console.error(e);
+    document.getElementById("count").textContent = "Error";
   }
 }
 
-// Accept form UI
-function showAcceptForm(requestId) {
+function showAcceptForm(id) {
   const html = `
-    <div id="acceptModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;">
-      <div style="background:white;padding:25px;border-radius:15px;width:90%;max-width:500px;">
-        <h5>Accept This Request</h5>
-        <p><small>Request ID: ${requestId}</small></p>
-        <input class="form-control mb-2" id="fixerName" placeholder="Your Name" required>
-        <input class="form-control mb-2" id="fixerPhone" placeholder="Your Phone" required>
-        <input class="form-control mb-2" id="fixerEmail" placeholder="Your Email (optional)">
-        <input class="form-control mb-2" id="proposedPrice" placeholder="Proposed Price (SGD)" type="number">
-        <input class="form-control mb-2" id="availableDate" placeholder="Available Date" type="date">
-        <input class="form-control mb-2" id="availableTime" placeholder="Available Time" type="time">
-        <textarea class="form-control mb-3" id="message" placeholder="Message (optional)" rows="2"></textarea>
-        <div class="d-flex justify-content-between">
-          <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-          <button class="btn btn-success" onclick="submitAccept('${requestId}')">Submit Offer</button>
+    <div id="modal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:9999;">
+      <div style="background:white;padding:30px;border-radius:15px;max-width:90%;width:500px;">
+        <h5>Submit Your Offer</h5>
+        <input class="form-control mb-2" id="fName" placeholder="Your Name" required>
+        <input class="form-control mb-2" id="fPhone" placeholder="Your Phone" required>
+        <input class="form-control mb-2" id="fEmail" placeholder="Email (optional)">
+        <input class="form-control mb-2" id="price" type="number" placeholder="Your Price (SGD)">
+        <input class="form-control mb-2" id="date" type="date">
+        <input class="form-control mb-2" id="time" type="time">
+        <textarea class="form-control mb-3" id="msg" rows="2" placeholder="Message (optional)"></textarea>
+        <div class="text-end">
+          <button class="btn btn-secondary me-2" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-success" onclick="submitOffer('${id}')">Send Offer</button>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
-function closeModal() {
-  const el = document.getElementById("acceptModal");
-  if (el) el.remove();
+function showOffers(requestId, offersJson) {
+  const offers = JSON.parse(offersJson);
+  let list = offers.map((o, i) => `
+    <div class="border p-3 mb-2 rounded bg-light">
+      <b>${o.name}</b> - S$${o.price || 'TBD'}<br>
+      <small>${o.phone} | ${o.date || '?'} ${o.time || ''}</small><br>
+      ${o.message ? '<em>' + o.message + '</em>' : ''}
+      <div class="text-end mt-2">
+        <button class="btn btn-success btn-sm" onclick="confirmFixer('${requestId}', '${i}')">
+          Choose This Fixer
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  const html = `
+    <div id="modal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:9999;">
+      <div style="background:white;padding:30px;border-radius:15px;max-width:90%;width:600px;max-height:80vh;overflow-y:auto;">
+        <h5>Choose Your Fixer</h5>
+        ${list || '<p>No offers yet.</p>'}
+        <div class="text-end mt-3">
+          <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
-// Submit accept offer
-async function submitAccept(requestId) {
+function closeModal() { document.getElementById("modal")?.remove(); }
+
+async function submitOffer(id) {
   const data = {
-    action: "acceptRequest",
-    id: requestId,
-    fixerName: document.getElementById("fixerName").value,
-    fixerPhone: document.getElementById("fixerPhone").value,
-    fixerEmail: document.getElementById("fixerEmail").value,
-    proposedPrice: document.getElementById("proposedPrice").value,
-    availableDate: document.getElementById("availableDate").value,
-    availableTime: document.getElementById("availableTime").value,
-    message: document.getElementById("message").value
+    action: "submitOffer",
+    requestId: id,
+    name: document.getElementById("fName").value,
+    phone: document.getElementById("fPhone").value,
+    email: document.getElementById("fEmail").value,
+    price: document.getElementById("price").value,
+    date: document.getElementById("date").value,
+    time: document.getElementById("time").value,
+    message: document.getElementById("msg").value
   };
+  if (!data.name || !data.phone) return alert("Name & Phone required");
 
-  if (!data.fixerName || !data.fixerPhone) {
-    alert("Name and Phone are required!");
-    return;
-  }
-
-  try {
-    const url = buildProxyUrl(data);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Network error");
-    const result = await res.json();
-
-    closeModal();
-    if (result.success) {
-      alert("✅ Offer submitted successfully!");
-      load();
-    } else {
-      alert("❌ " + (result.error || "Unknown error"));
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Failed to submit. Check console.");
-  }
+  const res = await fetch(buildProxyUrl(data));
+  const json = await res.json();
+  closeModal();
+  alert(json.success ? "Offer sent!" : "Failed: " + json.error);
+  load();
 }
 
-// Handle job posting
+async function confirmFixer(requestId, offerIndex) {
+  if (!confirm("Confirm this fixer? Job will be marked as CONFIRMED.")) return;
+  const res = await fetch(buildProxyUrl({
+    action: "confirmFixer",
+    requestId,
+    offerIndex
+  }));
+  const json = await res.json();
+  closeModal();
+  alert(json.success ? "Fixer confirmed! Job closed." : "Error: " + json.error);
+  load();
+}
+
 document.getElementById("postForm").onsubmit = async function(e) {
   e.preventDefault();
   const f = e.target;
@@ -220,32 +223,19 @@ document.getElementById("postForm").onsubmit = async function(e) {
     description: f[4].value,
     budget: f[5].value
   };
+  if (!data.location) return alert("Select area");
 
-  if (!data.location) {
-    alert("Please select an area!");
-    return;
-  }
-
-  try {
-    const url = buildProxyUrl(data);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Network error");
-    const result = await res.json();
-
-    if (result.success) {
-      alert("✅ Job posted! Marker appearing soon.");
-      f.reset();
-      load();
-    } else {
-      alert("❌ " + (result.error || "Failed to post job"));
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Failed to post. Check console.");
+  const res = await fetch(buildProxyUrl(data));
+  const json = await res.json();
+  if (json.success) {
+    alert("Job posted successfully!");
+    f.reset();
+    load();
+  } else {
+    alert("Error: " + json.error);
   }
 };
 
-// Start
 load();
 setInterval(load, 30000);
 </script>
